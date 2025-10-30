@@ -40,4 +40,17 @@ describe('TemplateDetailsPanel', () => {
     rerender(<Harness task={{ id: 'b', title: 'Task B' }} />);
     await waitFor(() => expect(mockCheckTaskLibraryStatus).toHaveBeenCalledTimes(2));
   });
+
+  it('resets checking state when a task is cleared', async () => {
+    const initialTask = { id: 'a', title: 'Task A' };
+    const { rerender } = render(<Harness task={initialTask} />);
+
+    await waitFor(() => expect(mockCheckTaskLibraryStatus).toHaveBeenCalledTimes(1));
+    expect(screen.getByTestId('library-status')).toHaveTextContent('Template is not in the library.');
+
+    rerender(<Harness task={null} />);
+
+    await waitFor(() => expect(screen.getByTestId('library-status')).toHaveTextContent('Template is not in the library.'));
+    expect(mockCheckTaskLibraryStatus).toHaveBeenCalledTimes(1);
+  });
 });
