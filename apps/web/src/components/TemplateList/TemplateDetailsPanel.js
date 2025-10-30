@@ -13,6 +13,7 @@ export default function TemplateDetailsPanel({ task }) {
 
   useEffect(() => {
     if (!task?.id) {
+      setIsCheckingLibraryStatus(false);
       setIsInLibrary(false);
       return undefined;
     }
