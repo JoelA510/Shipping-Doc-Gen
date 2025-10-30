@@ -1,2 +1,4 @@
 # Node / Python / build artifacts will be added as tooling is introduced.
 .env.local
+node_modules/
+apps/web/build/
