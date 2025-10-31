@@ -32,7 +32,6 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const marker = '<!-- codex-review-bot -->';
-            const { context, github, core } = require('@actions/github-script');
 
             const owner = context.repo.owner;
             const repo = context.repo.repo;

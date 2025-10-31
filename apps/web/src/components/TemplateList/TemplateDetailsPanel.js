@@ -15,6 +15,11 @@ export default function TemplateDetailsPanel({ task }) {
     if (!task?.id) {
       setIsCheckingLibraryStatus(false);
       setIsInLibrary(false);
+    }
+  }, [task?.id]);
+
+  useEffect(() => {
+    if (!task?.id) {
       return undefined;
     }
     let mounted = true;

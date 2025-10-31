@@ -14,4 +14,17 @@ describe('useReportData', () => {
 
     expect(rootTask).toBe(tasks[0]);
   });
+
+  it('ignores invalid task entries when finding the root project', () => {
+    const tasks = [
+      { id: 'root', parent_task_id: null },
+      { id: undefined, parent_task_id: 'root' },
+      { id: 'leaf', parent_task_id: 'root' }
+    ];
+
+    const { result } = renderHook(() => useReportData(tasks));
+    const rootTask = result.current.findRootProject('leaf');
+
+    expect(rootTask).toBe(tasks[0]);
+  });
 });

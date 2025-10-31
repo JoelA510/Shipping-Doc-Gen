@@ -2,28 +2,23 @@ import { useCallback, useMemo } from 'react';
 
 export function useReportData(allTasks = []) {
   const tasksById = useMemo(() => {
-    const entries = (allTasks ?? []).map(task => [task.id, task]);
+    const entries = (allTasks ?? [])
+      .filter(task => task?.id != null)
+      .map(task => [task.id, task]);
     return new Map(entries);
   }, [allTasks]);
 
   const findRootProject = useCallback((taskId) => {
-    if (!taskId) {
-      return undefined;
-    }
-    let current = tasksById.get(taskId);
     const visited = new Set();
-    while (current && current.parent_task_id) {
-      if (visited.has(current.id)) {
+    let currentTask = tasksById.get(taskId);
+    while (currentTask && currentTask.parent_task_id) {
+      if (visited.has(currentTask.id)) {
         break;
       }
-      visited.add(current.id);
-      const parent = tasksById.get(current.parent_task_id);
-      if (!parent) {
-        break;
-      }
-      current = parent;
+      visited.add(currentTask.id);
+      currentTask = tasksById.get(currentTask.parent_task_id);
     }
-    return current;
+    return currentTask ?? null;
   }, [tasksById]);
 
   return {
