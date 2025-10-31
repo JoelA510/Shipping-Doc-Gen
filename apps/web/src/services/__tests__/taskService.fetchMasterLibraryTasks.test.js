@@ -1,0 +1,72 @@
+import { fetchMasterLibraryTasks } from '../taskService';
+import { supabase, __mock } from '../supabaseClient';
+
+jest.mock('../supabaseClient', () => {
+  const createBuilder = () => {
+    const state = { result: { data: [], error: null, count: 0 } };
+    const builder = {
+      select: jest.fn(() => builder),
+      eq: jest.fn(() => builder),
+      range: jest.fn(() => builder),
+      abortSignal: jest.fn(() => builder),
+      __setResult: (result) => {
+        state.result = result;
+      },
+      then: jest.fn((resolve, reject) => Promise.resolve(state.result).then(resolve, reject))
+    };
+    return { builder, state };
+  };
+
+  let { builder, state } = createBuilder();
+  const from = jest.fn(() => builder);
+
+  const reset = () => {
+    const created = createBuilder();
+    builder = created.builder;
+    state = created.state;
+    from.mockImplementation(() => builder);
+  };
+
+  const setResult = (result) => {
+    builder.__setResult(result);
+  };
+
+  const getBuilder = () => builder;
+
+  return {
+    supabase: { from },
+    __mock: {
+      reset,
+      setResult,
+      getBuilder,
+      get state() {
+        return state;
+      }
+    }
+  };
+});
+
+describe('fetchMasterLibraryTasks', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    __mock.reset();
+    __mock.setResult({ data: [], error: null, count: 0 });
+  });
+
+  it('queries the master library table and applies pagination', async () => {
+    __mock.setResult({ data: [{ id: 'a' }], error: null, count: 12 });
+    const result = await fetchMasterLibraryTasks({ from: 40, limit: 10 });
+    const builder = __mock.getBuilder();
+    expect(supabase.from).toHaveBeenCalledWith('master_library_tasks');
+    expect(builder.range).toHaveBeenCalledWith(40, 49);
+    expect(result.from).toBe(40);
+    expect(result.limit).toBe(10);
+    expect(result.count).toBe(12);
+  });
+
+  it('filters by task id when provided', async () => {
+    await fetchMasterLibraryTasks({ taskId: 'xyz', limit: 5 });
+    const builder = __mock.getBuilder();
+    expect(builder.eq).toHaveBeenCalledWith('id', 'xyz');
+  });
+});

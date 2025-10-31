@@ -20,21 +20,27 @@ export const SearchContext = createContext(null);
 export function SearchProvider({ children }) {
   const [filtersState, setFiltersState] = useState(createDefaultFilters);
   const [page, setPage] = useState(0);
+  const [limit, setLimit] = useState(DEFAULT_LIMIT);
   const [count, setCount] = useState(0);
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const filters = useMemo(() => ({ ...filtersState }), [filtersState]);
-  const from = page * DEFAULT_LIMIT;
+  const from = page * limit;
 
   const setFilters = useCallback((updater) => {
     setFiltersState(prev => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      return { ...prev, ...next };
+      const nextPartial = typeof updater === 'function' ? updater(prev) : updater;
+      const merged = { ...prev, ...nextPartial };
+      const changed = Object.keys(merged).some((key) => merged[key] !== prev[key]);
+      if (!changed) {
+        return prev;
+      }
+      setPage(0);
+      return merged;
     });
-    setPage(0);
-  }, [setPage]);
+  }, []);
 
   const run = useCallback(async (signal) => {
     setIsLoading(true);
@@ -43,7 +49,7 @@ export function SearchProvider({ children }) {
       const { data, count: total } = await fetchFilteredTasks({
         ...filters,
         from,
-        limit: DEFAULT_LIMIT,
+        limit,
         signal
       });
       setResults(data ?? []);
@@ -56,7 +62,7 @@ export function SearchProvider({ children }) {
     } finally {
       setIsLoading(false);
     }
-  }, [filters, from]);
+  }, [filters, from, limit]);
 
   useEffect(() => {
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
@@ -69,7 +75,7 @@ export function SearchProvider({ children }) {
   const reset = useCallback(() => {
     setFiltersState(createDefaultFilters());
     setPage(0);
-  }, [setPage]);
+  }, []);
 
   const value = useMemo(() => ({
     filters,
@@ -78,10 +84,12 @@ export function SearchProvider({ children }) {
     count,
     page,
     setPage,
+    limit,
+    setLimit,
     isLoading,
     error,
     reset
-  }), [filters, setFilters, results, count, page, setPage, isLoading, error, reset]);
+  }), [filters, setFilters, results, count, page, setPage, limit, setLimit, isLoading, error, reset]);
 
   return (
     <SearchContext.Provider value={value}>

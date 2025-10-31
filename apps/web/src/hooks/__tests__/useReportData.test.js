@@ -27,4 +27,27 @@ describe('useReportData', () => {
 
     expect(rootTask).toBe(tasks[0]);
   });
+
+  it('returns null when encountering a missing parent task', () => {
+    const tasks = [
+      { id: 'a', parent_task_id: 'missing' }
+    ];
+
+    const { result } = renderHook(() => useReportData(tasks));
+    const rootTask = result.current.findRootProject('a');
+
+    expect(rootTask).toBeNull();
+  });
+
+  it('guards against cycles in the task tree', () => {
+    const tasks = [
+      { id: 'a', parent_task_id: 'b' },
+      { id: 'b', parent_task_id: 'a' }
+    ];
+
+    const { result } = renderHook(() => useReportData(tasks));
+    const rootTask = result.current.findRootProject('a');
+
+    expect(rootTask).toBeNull();
+  });
 });

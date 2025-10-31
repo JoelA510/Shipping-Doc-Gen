@@ -1,9 +1,6 @@
-import { useMemo } from 'react';
+import { useContext } from 'react';
+import { MasterLibraryContext } from '../components/contexts/MasterLibraryContext';
 
 export function useMasterLibrary() {
-  return useMemo(() => ({
-    async checkTaskLibraryStatus() {
-      return false;
-    }
-  }), []);
+  return useContext(MasterLibraryContext);
 }

@@ -1,0 +1,55 @@
+import React, { useContext } from 'react';
+import { act, renderHook, waitFor } from '@testing-library/react';
+import { MasterLibraryContext, MasterLibraryProvider } from '../MasterLibraryContext';
+import { fetchMasterLibraryTasks } from '../../../services/taskService';
+
+jest.mock('../../../services/taskService', () => ({
+  fetchFilteredTasks: jest.fn(),
+  fetchMasterLibraryTasks: jest.fn()
+}));
+
+const mockFetchMasterLibraryTasks = fetchMasterLibraryTasks;
+
+const wrapper = ({ children }) => (
+  <MasterLibraryProvider>{children}</MasterLibraryProvider>
+);
+
+describe('MasterLibraryProvider', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockFetchMasterLibraryTasks.mockResolvedValue({ data: [], count: 0, from: 0, limit: 20 });
+  });
+
+  it('requests the correct page ranges when the page changes', async () => {
+    const { result } = renderHook(() => useContext(MasterLibraryContext), { wrapper });
+
+    await waitFor(() => expect(mockFetchMasterLibraryTasks).toHaveBeenCalledTimes(1));
+    expect(mockFetchMasterLibraryTasks).toHaveBeenLastCalledWith(expect.objectContaining({ from: 0, limit: 20 }));
+
+    await act(async () => {
+      result.current.setPage(prev => prev + 1);
+    });
+
+    await waitFor(() => expect(mockFetchMasterLibraryTasks).toHaveBeenCalledTimes(2));
+    expect(mockFetchMasterLibraryTasks).toHaveBeenLastCalledWith(expect.objectContaining({ from: 20, limit: 20 }));
+  });
+
+  it('checks the library cache before querying the backend', async () => {
+    mockFetchMasterLibraryTasks
+      .mockResolvedValueOnce({ data: [{ id: 'cached', title: 'Cached' }], count: 1, from: 0, limit: 20 })
+      .mockResolvedValueOnce({ data: [{ id: 'remote', title: 'Remote' }], count: 1, from: 0, limit: 1 });
+
+    const { result } = renderHook(() => useContext(MasterLibraryContext), { wrapper });
+
+    await waitFor(() => expect(result.current.items).toHaveLength(1));
+
+    const cached = await result.current.checkTaskLibraryStatus('cached');
+    expect(cached).toBe(true);
+    expect(mockFetchMasterLibraryTasks).toHaveBeenCalledTimes(1);
+
+    const remote = await result.current.checkTaskLibraryStatus('remote');
+    expect(remote).toBe(true);
+    expect(mockFetchMasterLibraryTasks).toHaveBeenCalledTimes(2);
+    expect(mockFetchMasterLibraryTasks).toHaveBeenLastCalledWith(expect.objectContaining({ taskId: 'remote', from: 0, limit: 1 }));
+  });
+});
