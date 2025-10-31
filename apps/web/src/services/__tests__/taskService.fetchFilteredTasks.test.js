@@ -10,6 +10,7 @@ jest.mock('../supabaseClient', () => {
       gte: jest.fn(() => builder),
       lte: jest.fn(() => builder),
       or: jest.fn(() => builder),
+      order: jest.fn(() => builder),
       range: jest.fn(() => builder),
       abortSignal: jest.fn(() => builder),
       __setResult: (result) => {
@@ -94,5 +95,21 @@ describe('fetchFilteredTasks', () => {
     await fetchFilteredTasks({ priority: 2, limit: 1 });
     const builder = __mock.getBuilder();
     expect(builder.eq).toHaveBeenCalledWith('priority', 2);
+  });
+
+  it('applies sort order mapping', async () => {
+    await fetchFilteredTasks({ sortBy: 'title_asc' });
+    let builder = __mock.getBuilder();
+    expect(builder.order).toHaveBeenCalledWith('title', { ascending: true });
+
+    __mock.reset();
+    await fetchFilteredTasks({ sortBy: 'priority_desc' });
+    builder = __mock.getBuilder();
+    expect(builder.order).toHaveBeenCalledWith('priority', { ascending: false });
+
+    __mock.reset();
+    await fetchFilteredTasks({ sortBy: 'unknown' });
+    builder = __mock.getBuilder();
+    expect(builder.order).toHaveBeenCalledWith('updated_at', { ascending: false });
   });
 });

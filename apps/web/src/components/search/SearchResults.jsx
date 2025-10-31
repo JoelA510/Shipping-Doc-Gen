@@ -1,4 +1,4 @@
-import React, { useContext, useMemo } from 'react';
+import React, { useCallback, useContext, useMemo, useRef } from 'react';
 import { FixedSizeList as List } from 'react-window';
 import { SearchContext } from '../contexts/SearchContext';
 
@@ -13,28 +13,98 @@ export default function SearchResults() {
 
   const itemData = useMemo(() => results, [results]);
   const listHeight = Math.min(MAX_HEIGHT, Math.max(itemData.length, 1) * ITEM_HEIGHT);
+  const listRef = useRef(null);
+  const outerRef = useRef(null);
+  const statusMessage = count ? `${fromDisplay}–${toDisplay} of ${count}` : '0 results';
+  const hiddenStyles = useMemo(
+    () => ({
+      border: 0,
+      clip: 'rect(0 0 0 0)',
+      height: '1px',
+      margin: '-1px',
+      overflow: 'hidden',
+      padding: 0,
+      position: 'absolute',
+      width: '1px'
+    }),
+    []
+  );
 
-  if (isLoading) return <div>Loading…</div>;
-  if (error) return <div>Search error</div>;
+  const handleKeyDown = useCallback(
+    (event, index) => {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        const delta = event.key === 'ArrowDown' ? 1 : -1;
+        const nextIndex = Math.min(Math.max(index + delta, 0), itemData.length - 1);
+        if (nextIndex !== index) {
+          listRef.current?.scrollToItem(nextIndex);
+          requestAnimationFrame(() => {
+            const container = outerRef.current;
+            const target = container?.querySelector(`[data-index="${nextIndex}"]`);
+            target?.focus();
+          });
+        }
+      }
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        event.currentTarget.click();
+      }
+    },
+    [itemData.length]
+  );
+
+  const OuterElement = useMemo(
+    () =>
+      React.forwardRef(function OuterElementComponent(props, ref) {
+        return (
+          <div
+            {...props}
+            ref={node => {
+              if (typeof ref === 'function') {
+                ref(node);
+              } else if (ref) {
+                ref.current = node;
+              }
+              outerRef.current = node;
+            }}
+            role="list"
+            aria-label="Search results"
+          />
+        );
+      }),
+    [outerRef]
+  );
+
+  if (error) return <div role="alert">Search error</div>;
 
   return (
-    <div>
-      <div className="mb-2 text-sm">{count ? `${fromDisplay}–${toDisplay} of ${count}` : '0 results'}</div>
-      {hasResults ? (
+    <div aria-busy={isLoading}>
+      <div style={hiddenStyles} aria-live="polite" role="status">{statusMessage}</div>
+      <div className="mb-2 text-sm" aria-hidden="true">{statusMessage}</div>
+      {isLoading ? (
+        <div>Loading…</div>
+      ) : hasResults ? (
         <List
+          ref={listRef}
           height={listHeight}
           width="100%"
           itemSize={ITEM_HEIGHT}
           itemCount={itemData.length}
           itemData={itemData}
+          outerElementType={OuterElement}
+          itemKey={(index, data) => data[index]?.id ?? index}
         >
           {({ index, style, data }) => {
             const task = data[index];
             return (
               <div
+                key={task.id ?? index}
                 style={style}
                 className="flex items-center border-b border-slate-200 px-2"
-                key={task.id ?? index}
+                role="listitem"
+                tabIndex={0}
+                data-index={index}
+                onKeyDown={event => handleKeyDown(event, index)}
               >
                 {task.title ?? 'Untitled task'}
               </div>

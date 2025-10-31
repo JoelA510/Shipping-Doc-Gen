@@ -7,6 +7,8 @@ jest.mock('../supabaseClient', () => {
     const builder = {
       select: jest.fn(() => builder),
       eq: jest.fn(() => builder),
+      ilike: jest.fn(() => builder),
+      order: jest.fn(() => builder),
       range: jest.fn(() => builder),
       abortSignal: jest.fn(() => builder),
       __setResult: (result) => {
@@ -68,5 +70,17 @@ describe('fetchMasterLibraryTasks', () => {
     await fetchMasterLibraryTasks({ taskId: 'xyz', limit: 5 });
     const builder = __mock.getBuilder();
     expect(builder.eq).toHaveBeenCalledWith('id', 'xyz');
+  });
+
+  it('filters by text and applies sort order', async () => {
+    await fetchMasterLibraryTasks({ text: 'Alpha', sortBy: 'title_asc' });
+    let builder = __mock.getBuilder();
+    expect(builder.ilike).toHaveBeenCalledWith('title', '%Alpha%');
+    expect(builder.order).toHaveBeenCalledWith('title', { ascending: true });
+
+    __mock.reset();
+    await fetchMasterLibraryTasks({ sortBy: 'priority_desc' });
+    builder = __mock.getBuilder();
+    expect(builder.order).toHaveBeenCalledWith('priority', { ascending: false });
   });
 });

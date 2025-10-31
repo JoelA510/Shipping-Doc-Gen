@@ -24,7 +24,12 @@ function Harness() {
       >
         Update filter
       </button>
+      <button type="button" onClick={value.resetFilters} data-testid="reset-filters">
+        Reset
+      </button>
       <span data-testid="page">{value.page}</span>
+      <span data-testid="filter-text">{value.filters.text}</span>
+      <span data-testid="filter-sort">{value.filters.sortBy}</span>
     </div>
   );
 }
@@ -33,6 +38,7 @@ describe('SearchProvider', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockFetchFilteredTasks.mockResolvedValue({ data: [], count: 0, from: 0, limit: 20 });
+    window.localStorage.clear();
   });
 
   it('requests the correct page ranges when the page changes', async () => {
@@ -68,8 +74,40 @@ describe('SearchProvider', () => {
 
     fireEvent.click(screen.getByTestId('update-filter'));
 
-    await waitFor(() => expect(mockFetchFilteredTasks).toHaveBeenCalledTimes(4));
+    await waitFor(() => expect(mockFetchFilteredTasks).toHaveBeenCalledTimes(5));
     expect(mockFetchFilteredTasks).toHaveBeenLastCalledWith(expect.objectContaining({ from: 0 }));
     expect(screen.getByTestId('page')).toHaveTextContent('0');
+  });
+
+  it('hydrates filters from storage', async () => {
+    window.localStorage.setItem('sdg.filters.search.anon', JSON.stringify({ text: 'saved', sortBy: 'title_asc' }));
+
+    render(
+      <SearchProvider>
+        <Harness />
+      </SearchProvider>
+    );
+
+    await waitFor(() => expect(screen.getByTestId('filter-text')).toHaveTextContent('saved'));
+    expect(screen.getByTestId('filter-sort')).toHaveTextContent('title_asc');
+    expect(screen.getByTestId('page')).toHaveTextContent('0');
+  });
+
+  it('clears storage when filters reset', async () => {
+    render(
+      <SearchProvider>
+        <Harness />
+      </SearchProvider>
+    );
+
+    await waitFor(() => expect(mockFetchFilteredTasks).toHaveBeenCalled());
+
+    fireEvent.click(screen.getByTestId('update-filter'));
+    await waitFor(() => expect(screen.getByTestId('filter-text')).toHaveTextContent('updated'));
+    expect(window.localStorage.getItem('sdg.filters.search.anon')).toContain('updated');
+
+    fireEvent.click(screen.getByTestId('reset-filters'));
+    await waitFor(() => expect(screen.getByTestId('filter-text')).toHaveTextContent(''));
+    expect(window.localStorage.getItem('sdg.filters.search.anon')).toBeNull();
   });
 });

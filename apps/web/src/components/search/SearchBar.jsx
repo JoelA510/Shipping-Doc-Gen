@@ -2,7 +2,7 @@ import React, { useContext } from 'react';
 import { SearchContext } from '../contexts/SearchContext';
 
 export default function SearchBar() {
-  const { filters, setFilters } = useContext(SearchContext);
+  const { filters, setFilters, resetFilters, saveCurrentFilters } = useContext(SearchContext);
 
   return (
     <form className="flex flex-wrap gap-2 items-end" onSubmit={event => event.preventDefault()}>
@@ -70,6 +70,30 @@ export default function SearchBar() {
           <option value="2">High</option>
         </select>
       </label>
+      <label className="flex flex-col text-sm">
+        <span>Sort</span>
+        <select
+          value={filters.sortBy}
+          onChange={event =>
+            setFilters(prev => ({
+              ...prev,
+              sortBy: event.target.value
+            }))
+          }
+        >
+          <option value="updated_desc">Updated (newest)</option>
+          <option value="title_asc">Title (A–Z)</option>
+          <option value="priority_desc">Priority (high first)</option>
+        </select>
+      </label>
+      <div className="flex gap-2 text-sm">
+        <button type="button" onClick={saveCurrentFilters}>
+          Save filters
+        </button>
+        <button type="button" onClick={resetFilters}>
+          Reset
+        </button>
+      </div>
     </form>
   );
 }

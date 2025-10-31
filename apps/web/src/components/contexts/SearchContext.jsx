@@ -1,5 +1,6 @@
-import React, { createContext, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchFilteredTasks } from '../../services/taskService';
+import { clearFilters, loadFilters, saveFilters } from '../../utils/persistence';
 
 const DEFAULT_LIMIT = 20;
 
@@ -12,12 +13,13 @@ const createDefaultFilters = () => ({
   dateFrom: null,
   dateTo: null,
   includeArchived: false,
-  priority: null
+  priority: null,
+  sortBy: 'updated_desc'
 });
 
 export const SearchContext = createContext(null);
 
-export function SearchProvider({ children }) {
+export function SearchProvider({ children, userId = null }) {
   const [filtersState, setFiltersState] = useState(createDefaultFilters);
   const [page, setPage] = useState(0);
   const [limit, setLimit] = useState(DEFAULT_LIMIT);
@@ -25,9 +27,36 @@ export function SearchProvider({ children }) {
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [hasHydrated, setHasHydrated] = useState(false);
+  const skipNextSaveRef = useRef(false);
 
+  const storageKey = useMemo(
+    () => `sdg.filters.search.${userId ?? 'anon'}`,
+    [userId]
+  );
   const filters = useMemo(() => ({ ...filtersState }), [filtersState]);
   const from = page * limit;
+
+  useEffect(() => {
+    const stored = loadFilters(storageKey);
+    if (stored && Object.keys(stored).length > 0) {
+      setFiltersState(prev => ({ ...prev, ...stored }));
+      setPage(0);
+    }
+    setHasHydrated(true);
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (!hasHydrated) {
+      return;
+    }
+    if (skipNextSaveRef.current) {
+      skipNextSaveRef.current = false;
+      return;
+    }
+    saveFilters(storageKey, filters);
+    setPage(0);
+  }, [filters, storageKey, hasHydrated]);
 
   const setFilters = useCallback((updater) => {
     setFiltersState(prev => {
@@ -37,7 +66,6 @@ export function SearchProvider({ children }) {
       if (!changed) {
         return prev;
       }
-      setPage(0);
       return merged;
     });
   }, []);
@@ -72,10 +100,16 @@ export function SearchProvider({ children }) {
     };
   }, [run]);
 
-  const reset = useCallback(() => {
+  const resetFilters = useCallback(() => {
+    skipNextSaveRef.current = true;
     setFiltersState(createDefaultFilters());
     setPage(0);
-  }, []);
+    clearFilters(storageKey);
+  }, [storageKey]);
+
+  const saveCurrentFilters = useCallback(() => {
+    saveFilters(storageKey, filters);
+  }, [filters, storageKey]);
 
   const value = useMemo(() => ({
     filters,
@@ -88,8 +122,9 @@ export function SearchProvider({ children }) {
     setLimit,
     isLoading,
     error,
-    reset
-  }), [filters, setFilters, results, count, page, setPage, limit, setLimit, isLoading, error, reset]);
+    resetFilters,
+    saveCurrentFilters
+  }), [filters, setFilters, results, count, page, setPage, limit, setLimit, isLoading, error, resetFilters, saveCurrentFilters]);
 
   return (
     <SearchContext.Provider value={value}>
