@@ -65,7 +65,7 @@ export function SearchProvider({ children, userId = null }) {
       const merged = { ...prev, ...nextPartial };
       const didChange = Object.keys(merged).some((key) => merged[key] !== prev[key]);
       if (didChange) {
-        setPage(prevPage => (prevPage === 0 ? prevPage : 0));
+        setPage(0);
         return merged;
       }
       return prev;
