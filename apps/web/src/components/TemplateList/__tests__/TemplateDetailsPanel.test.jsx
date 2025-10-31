@@ -53,4 +53,20 @@ describe('TemplateDetailsPanel', () => {
     await waitFor(() => expect(screen.getByTestId('library-status')).toHaveTextContent('Template is not in the library.'));
     expect(mockCheckTaskLibraryStatus).toHaveBeenCalledTimes(1);
   });
+
+  it('resets library status flag when task becomes null', async () => {
+    mockCheckTaskLibraryStatus.mockResolvedValueOnce(true);
+    const initialTask = { id: 'a', title: 'Task A' };
+    const { rerender } = render(<Harness task={initialTask} />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('library-status')).toHaveTextContent('Template is in the library.')
+    );
+
+    rerender(<Harness task={null} />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('library-status')).toHaveTextContent('Template is not in the library.')
+    );
+  });
 });
