@@ -1,6 +1,7 @@
 import { supabase } from './supabaseClient';
 
 const TABLE_NAME = 'tasks';
+const MASTER_LIBRARY_TABLE = 'master_library_tasks';
 
 export async function fetchFilteredTasks({
   text = '',
@@ -57,6 +58,37 @@ export async function fetchFilteredTasks({
 
   if (priority !== null) {
     query = query.eq('priority', priority);
+  }
+
+  query = query.range(from, from + limit - 1);
+
+  const { data, error, count } = await query;
+  if (error) {
+    throw error;
+  }
+
+  return {
+    data: data ?? [],
+    count: typeof count === 'number' ? count : 0,
+    from,
+    limit
+  };
+}
+
+export async function fetchMasterLibraryTasks({
+  from = 0,
+  limit = 20,
+  taskId = null,
+  signal = null
+} = {}) {
+  let query = supabase.from(MASTER_LIBRARY_TABLE).select('*', { count: 'exact' });
+
+  if (signal && typeof query.abortSignal === 'function') {
+    query = query.abortSignal(signal);
+  }
+
+  if (taskId != null) {
+    query = query.eq('id', taskId);
   }
 
   query = query.range(from, from + limit - 1);
