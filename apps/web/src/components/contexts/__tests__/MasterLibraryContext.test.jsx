@@ -76,4 +76,27 @@ describe('MasterLibraryProvider', () => {
     await waitFor(() => expect(result.current.filters.text).toBe(''));
     expect(window.localStorage.getItem('sdg.filters.masterlib.anon')).toBeNull();
   });
+
+  it('resets to the first page once when filters change', async () => {
+    const { result } = renderHook(() => useContext(MasterLibraryContext), { wrapper });
+
+    await waitFor(() => expect(mockFetchMasterLibraryTasks).toHaveBeenCalledTimes(1));
+
+    await act(async () => {
+      result.current.setPage(prev => prev + 2);
+    });
+
+    await waitFor(() => expect(mockFetchMasterLibraryTasks).toHaveBeenCalledTimes(2));
+    expect(result.current.page).toBe(2);
+
+    mockFetchMasterLibraryTasks.mockClear();
+
+    await act(async () => {
+      result.current.setFilters(prev => ({ ...prev, text: 'updated' }));
+    });
+
+    await waitFor(() => expect(mockFetchMasterLibraryTasks).toHaveBeenCalledTimes(1));
+    expect(mockFetchMasterLibraryTasks).toHaveBeenLastCalledWith(expect.objectContaining({ from: 0 }));
+    expect(result.current.page).toBe(0);
+  });
 });

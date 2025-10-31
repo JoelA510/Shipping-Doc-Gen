@@ -83,4 +83,10 @@ describe('fetchMasterLibraryTasks', () => {
     builder = __mock.getBuilder();
     expect(builder.order).toHaveBeenCalledWith('priority', { ascending: false });
   });
+
+  it('does not escape commas for parameterized title search', async () => {
+    await fetchMasterLibraryTasks({ text: 'Bolts, Clips' });
+    const builder = __mock.getBuilder();
+    expect(builder.ilike).toHaveBeenCalledWith('title', '%Bolts, Clips%');
+  });
 });

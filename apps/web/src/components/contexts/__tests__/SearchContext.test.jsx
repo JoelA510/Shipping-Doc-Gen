@@ -57,7 +57,7 @@ describe('SearchProvider', () => {
     expect(mockFetchFilteredTasks).toHaveBeenLastCalledWith(expect.objectContaining({ from: 20, limit: 20 }));
   });
 
-  it('resets to the first page when filters change', async () => {
+  it('resets to the first page once when filters change', async () => {
     render(
       <SearchProvider>
         <Harness />
@@ -72,9 +72,11 @@ describe('SearchProvider', () => {
     await waitFor(() => expect(mockFetchFilteredTasks).toHaveBeenCalledTimes(3));
     expect(screen.getByTestId('page')).toHaveTextContent('2');
 
+    mockFetchFilteredTasks.mockClear();
+
     fireEvent.click(screen.getByTestId('update-filter'));
 
-    await waitFor(() => expect(mockFetchFilteredTasks).toHaveBeenCalledTimes(5));
+    await waitFor(() => expect(mockFetchFilteredTasks).toHaveBeenCalledTimes(1));
     expect(mockFetchFilteredTasks).toHaveBeenLastCalledWith(expect.objectContaining({ from: 0 }));
     expect(screen.getByTestId('page')).toHaveTextContent('0');
   });
