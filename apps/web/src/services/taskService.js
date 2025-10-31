@@ -110,8 +110,7 @@ export async function fetchMasterLibraryTasks({
   }
 
   if (text) {
-    const escaped = text.replace(/,/g, '\\,');
-    query = query.ilike('title', `%${escaped}%`);
+    query = query.ilike('title', `%${text}%`);
   }
 
   query = applySort(query, sortBy);

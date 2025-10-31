@@ -46,6 +46,7 @@ export function SearchProvider({ children, userId = null }) {
     setHasHydrated(true);
   }, [storageKey]);
 
+  // Persist filters ONLY; pagination reset occurs within setFilters to avoid extra fetches.
   useEffect(() => {
     if (!hasHydrated) {
       return;
@@ -55,20 +56,21 @@ export function SearchProvider({ children, userId = null }) {
       return;
     }
     saveFilters(storageKey, filters);
-    setPage(0);
   }, [filters, storageKey, hasHydrated]);
 
+  // Wrap the setter so filters update and pagination reset are batched in the same render.
   const setFilters = useCallback((updater) => {
     setFiltersState(prev => {
       const nextPartial = typeof updater === 'function' ? updater(prev) : updater;
       const merged = { ...prev, ...nextPartial };
-      const changed = Object.keys(merged).some((key) => merged[key] !== prev[key]);
-      if (!changed) {
-        return prev;
+      const didChange = Object.keys(merged).some((key) => merged[key] !== prev[key]);
+      if (didChange) {
+        setPage(prevPage => (prevPage === 0 ? prevPage : 0));
+        return merged;
       }
-      return merged;
+      return prev;
     });
-  }, []);
+  }, [setPage]);
 
   const run = useCallback(async (signal) => {
     setIsLoading(true);
