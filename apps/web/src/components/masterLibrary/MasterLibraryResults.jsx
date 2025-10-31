@@ -11,8 +11,7 @@ export default function MasterLibraryResults() {
   const fromDisplay = count > 0 ? page * limit + 1 : 0;
   const toDisplay = count > 0 ? Math.min(count, (page + 1) * limit) : 0;
 
-  const itemData = useMemo(() => items, [items]);
-  const listHeight = Math.min(MAX_HEIGHT, Math.max(itemData.length, 1) * ITEM_HEIGHT);
+  const listHeight = Math.min(MAX_HEIGHT, Math.max(items.length, 1) * ITEM_HEIGHT);
 
   if (isLoading) return <div>Loading…</div>;
   if (error) return <div>Master Library error</div>;
