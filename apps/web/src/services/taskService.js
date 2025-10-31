@@ -3,6 +3,20 @@ import { supabase } from './supabaseClient';
 const TABLE_NAME = 'tasks';
 const MASTER_LIBRARY_TABLE = 'master_library_tasks';
 
+const SORT_MAP = {
+  updated_desc: { column: 'updated_at', ascending: false },
+  title_asc: { column: 'title', ascending: true },
+  priority_desc: { column: 'priority', ascending: false }
+};
+
+const applySort = (query, sortBy) => {
+  const config = SORT_MAP[sortBy] ?? SORT_MAP.updated_desc;
+  if (typeof query.order === 'function') {
+    return query.order(config.column, { ascending: config.ascending });
+  }
+  return query;
+};
+
 export async function fetchFilteredTasks({
   text = '',
   status = null,
@@ -15,7 +29,8 @@ export async function fetchFilteredTasks({
   dateTo = null,
   includeArchived = false,
   priority = null,
-  signal = null
+  signal = null,
+  sortBy = 'updated_desc'
 } = {}) {
   let query = supabase.from(TABLE_NAME).select('*', { count: 'exact' });
 
@@ -60,6 +75,7 @@ export async function fetchFilteredTasks({
     query = query.eq('priority', priority);
   }
 
+  query = applySort(query, sortBy);
   query = query.range(from, from + limit - 1);
 
   const { data, error, count } = await query;
@@ -79,7 +95,9 @@ export async function fetchMasterLibraryTasks({
   from = 0,
   limit = 20,
   taskId = null,
-  signal = null
+  signal = null,
+  text = '',
+  sortBy = 'updated_desc'
 } = {}) {
   let query = supabase.from(MASTER_LIBRARY_TABLE).select('*', { count: 'exact' });
 
@@ -91,6 +109,12 @@ export async function fetchMasterLibraryTasks({
     query = query.eq('id', taskId);
   }
 
+  if (text) {
+    const escaped = text.replace(/,/g, '\\,');
+    query = query.ilike('title', `%${escaped}%`);
+  }
+
+  query = applySort(query, sortBy);
   query = query.range(from, from + limit - 1);
 
   const { data, error, count } = await query;

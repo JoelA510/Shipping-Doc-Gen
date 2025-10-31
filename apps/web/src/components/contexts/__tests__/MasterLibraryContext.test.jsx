@@ -18,6 +18,7 @@ describe('MasterLibraryProvider', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockFetchMasterLibraryTasks.mockResolvedValue({ data: [], count: 0, from: 0, limit: 20 });
+    window.localStorage.clear();
   });
 
   it('requests the correct page ranges when the page changes', async () => {
@@ -51,5 +52,28 @@ describe('MasterLibraryProvider', () => {
     expect(remote).toBe(true);
     expect(mockFetchMasterLibraryTasks).toHaveBeenCalledTimes(2);
     expect(mockFetchMasterLibraryTasks).toHaveBeenLastCalledWith(expect.objectContaining({ taskId: 'remote', from: 0, limit: 1 }));
+  });
+
+  it('hydrates and resets filters with persistence', async () => {
+    window.localStorage.setItem('sdg.filters.masterlib.anon', JSON.stringify({ text: 'stored', sortBy: 'title_asc' }));
+
+    const { result } = renderHook(() => useContext(MasterLibraryContext), { wrapper });
+
+    await waitFor(() => expect(result.current.filters.text).toBe('stored'));
+    expect(result.current.filters.sortBy).toBe('title_asc');
+
+    await act(async () => {
+      result.current.setFilters(prev => ({ ...prev, text: 'updated' }));
+    });
+
+    await waitFor(() => expect(result.current.filters.text).toBe('updated'));
+    expect(window.localStorage.getItem('sdg.filters.masterlib.anon')).toContain('updated');
+
+    act(() => {
+      result.current.resetFilters();
+    });
+
+    await waitFor(() => expect(result.current.filters.text).toBe(''));
+    expect(window.localStorage.getItem('sdg.filters.masterlib.anon')).toBeNull();
   });
 });
