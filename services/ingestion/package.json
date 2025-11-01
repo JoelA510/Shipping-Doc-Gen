@@ -1,0 +1,22 @@
+{
+  "name": "@shipping-doc-gen/ingestion",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node --test",
+    "report:accuracy": "node scripts/report_accuracy.js"
+  },
+  "dependencies": {
+    "ajv": "^8.12.0",
+    "csv-parse": "^5.5.6",
+    "mammoth": "^1.7.1",
+    "pdf-parse": "^1.1.1",
+    "xlsx": "^0.18.5",
+    "cheerio": "^1.0.0-rc.12"
+  },
+  "devDependencies": {
+    "docx": "^8.2.2"
+  }
+}

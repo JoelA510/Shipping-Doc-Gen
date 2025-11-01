@@ -30,10 +30,16 @@ _No implementation required in this PR cycle; treat as reference for subsequent 
 
 ---
 
-## Phase 2 – Ingestion & OCR Prototype *(Status: Not Started)*
+## Phase 2 – Ingestion & OCR Prototype *(Status: In Progress)*
 
 **Goal**
 - Prototype single‑file ingestion for PDF, XLSX/CSV, and DOCX; normalize to canonical JSON; produce a golden set and an accuracy report.
+
+**Status update (2025-10-31)**
+- ✅ Created `services/ingestion` Node package with modular parsers for PDF, XLSX/CSV, and DOCX plus canonical normalization with AJV validation and checksum calculations.
+- ✅ Seeded golden fixtures (`tests/golden`) and node:test coverage ensuring canonical parity across formats, size limits, and error handling.
+- ✅ Added `scripts/report_accuracy.js` for per-field accuracy summaries across the golden set.
+- ⏭️ Follow-ups: integrate OCR microservice fallback for real scanned PDFs, expose a CLI/API shim for manual ingestion, and capture normalization telemetry for operator review.
 
 **Tasks**
 1. **Module layout**

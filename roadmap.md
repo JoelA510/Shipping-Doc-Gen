@@ -57,10 +57,11 @@ A web app that ingests CIPL documents in many formats, normalize...L outputs for
 
 * Lock input matrix. Confirm OCR baseline. Define canonical JSON...lidations. Finalize stack. Risk register for parsing edge cases.
 
-### Phase 2 - Ingestion and OCR Prototype **(Status: Not Started)**
+### Phase 2 - Ingestion and OCR Prototype **(Status: In Progress)**
 
-* **Phase-2 start (OCR→Parse→Canonical JSON):** Implement PDF/XL...field accuracy and per-doc Quantity/Net-Weight/Value checksums).
-* Simple upload spike for 1 file per type. OCR test on scanned P...from samples. Produce a minimal JSON demo. Record accuracy gaps.
+* **Prototype ingestion modules landed:** `services/ingestion` package exposes `parseFile(buf, type)` with dispatchers for PDF, XLSX, CSV, and DOCX inputs. Normalization enforces kg/USD units, uppercases codes, validates the canonical schema with AJV, and computes quantity/weight/value checksums.
+* **Golden data + accuracy report:** Seeded `tests/golden/{pdf,xlsx,csv,docx}` fixtures plus `expected.json` snapshots. Node test coverage validates canonical output per format, size-limit guards, and accuracy script summarizing per-field success.
+* **Next up:** Wire optional OCR fallback (currently stubbing via plain-text fallback for PDFs), surface normalization metadata in telemetry, and wrap the package with minimal API/CLI for manual operator trials.
 
 ### Phase 3 - Full Ingestion Pipeline **(Status: Planned)**
 
