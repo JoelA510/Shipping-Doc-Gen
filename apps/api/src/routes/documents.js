@@ -28,15 +28,26 @@ const { saveFile } = require('../services/storage');
 
 // Trigger export
 router.post('/:id/export', async (req, res) => {
-    const { type } = req.body;
+    const { type, template } = req.body;
     try {
         const doc = await getDocument(req.params.id);
         if (!doc) {
             return res.status(404).json({ error: 'Document not found' });
         }
 
-        console.log(`Generating PDF for document ${req.params.id} as ${type}`);
-        const pdfBuffer = await generatePDF(doc, 'sli'); // Default to SLI for now
+        // Map template names
+        const templateMap = {
+            'sli': 'sli',
+            'dhl': 'dhl-invoice',
+            'dhl-invoice': 'dhl-invoice',
+            'bol': 'generic-bol',
+            'generic-bol': 'generic-bol'
+        };
+
+        const templateName = templateMap[template] || 'sli'; // Default to SLI
+        console.log(`Generating PDF for document ${req.params.id} as ${type} using template ${templateName}`);
+
+        const pdfBuffer = await generatePDF(doc, templateName);
 
         const filename = `${req.params.id}-${type}-${Date.now()}.pdf`;
         const savedFile = await saveFile(pdfBuffer, filename);
@@ -44,7 +55,8 @@ router.post('/:id/export', async (req, res) => {
         res.status(200).json({
             message: 'Export complete',
             url: savedFile.url,
-            path: savedFile.path
+            path: savedFile.path,
+            template: templateName
         });
     } catch (error) {
         console.error('Export error:', error);
