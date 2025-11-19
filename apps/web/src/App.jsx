@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import UploadZone from './components/upload/UploadZone';
-import ProcessingStatus from './components/status/ProcessingStatus';
 import DocumentReview from './components/review/DocumentReview';
 import Login from './components/auth/Login';
 import { api } from './services/api';
@@ -45,10 +44,6 @@ function App() {
                         setView('review');
                     }} />
                 )}
-                {view === 'processing' && <ProcessingStatus jobId={currentJobId} onComplete={(doc) => {
-                    setDocument(doc);
-                    setView('review');
-                }} />}
                 {view === 'review' && document && (
                     <DocumentReview
                         document={document}

@@ -1,9 +1,9 @@
 import '@testing-library/jest-dom';
 
-if (!process.env.REACT_APP_SUPABASE_URL) {
-  process.env.REACT_APP_SUPABASE_URL = 'http://localhost';
+if (!import.meta.env.VITE_SUPABASE_URL) {
+  import.meta.env.VITE_SUPABASE_URL = 'http://localhost';
 }
 
-if (!process.env.REACT_APP_SUPABASE_ANON_KEY) {
-  process.env.REACT_APP_SUPABASE_ANON_KEY = 'test-anon-key';
+if (!import.meta.env.VITE_SUPABASE_ANON_KEY) {
+  import.meta.env.VITE_SUPABASE_ANON_KEY = 'test-anon-key';
 }
