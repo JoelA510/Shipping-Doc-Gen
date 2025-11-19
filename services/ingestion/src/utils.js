@@ -55,7 +55,8 @@ const canonicalSchema = {
       properties: {
         sourceType: { type: 'string' },
         raw: { type: 'object' },
-        normalization: { type: 'object' }
+        normalization: { type: 'object' },
+        validation: { type: 'array' }
       }
     }
   }
@@ -147,6 +148,9 @@ function normalizeDocument(rawDoc) {
   });
 
   const checksums = computeChecksums(lines);
+  const { validateCompliance } = require('./validation/validators');
+  const validationErrors = validateCompliance({ lines });
+
   const canonicalDoc = {
     header,
     lines,
@@ -154,7 +158,8 @@ function normalizeDocument(rawDoc) {
     meta: {
       sourceType: rawDoc.meta.sourceType,
       raw: rawDoc.meta.raw,
-      normalization: normalizationNotes
+      normalization: normalizationNotes,
+      validation: validationErrors
     }
   };
 

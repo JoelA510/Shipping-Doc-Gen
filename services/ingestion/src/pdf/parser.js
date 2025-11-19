@@ -62,10 +62,24 @@ async function parsePdf(buffer) {
     raw: {}
   };
   try {
-    const result = await pdf(buffer);
-    text = result.text;
-    meta.raw.textLength = text.length;
-    meta.raw.details = result.info || {};
+    try {
+      const result = await pdf(buffer);
+      text = result.text;
+      meta.raw.textLength = text.length;
+      meta.raw.details = result.info || {};
+    } catch (parseError) {
+      // Fallback to OCR extraction for scanned PDFs
+      const { extractTextFromPdf } = require('../../ocr/ocr');
+      try {
+        text = await extractTextFromPdf(buffer);
+        meta.raw.fallback = true;
+        meta.raw.ocr = true;
+      } catch (ocrError) {
+        // If OCR also fails, rethrow original parse error with additional context
+        parseError.message += ' | OCR fallback also failed.';
+        throw parseError;
+      }
+    }
   } catch (error) {
     const fallbackText = buffer.toString('utf8');
     if (/^%PDF/.test(fallbackText)) {

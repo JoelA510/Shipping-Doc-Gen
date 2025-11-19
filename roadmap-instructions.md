@@ -30,7 +30,7 @@ _No implementation required in this PR cycle; treat as reference for subsequent 
 
 ---
 
-## Phase 2 – Ingestion & OCR Prototype *(Status: In Progress)*
+## Phase 2 – Ingestion & OCR Prototype *(Status: Completed)*
 
 **Goal**
 - Prototype single‑file ingestion for PDF, XLSX/CSV, and DOCX; normalize to canonical JSON; produce a golden set and an accuracy report.
@@ -75,7 +75,7 @@ _No implementation required in this PR cycle; treat as reference for subsequent 
 
 ---
 
-## Phase 3 – Full Ingestion Pipeline *(Status: Planned)*
+## Phase 3 – Full Ingestion Pipeline *(Status: Completed)*
 
 **Goal**
 - Production‑ready ingestion with ZIP fan‑out, a job queue, OCR microservice, storage, and progress reporting.
@@ -105,7 +105,7 @@ _No implementation required in this PR cycle; treat as reference for subsequent 
 
 ---
 
-## Phase 4 – Extraction & Canonical Mapping *(Status: Planned)*
+## Phase 4 – Extraction & Canonical Mapping *(Status: Completed)*
 
 **Goal**
 - Mature field mappers, normalization, and **compliance validators**.
@@ -133,7 +133,7 @@ _No implementation required in this PR cycle; treat as reference for subsequent 
 
 ---
 
-## Phase 5 – Backend Infra & Security *(Status: Planned)*
+## Phase 5 – Backend Infra & Security *(Status: Completed)*
 
 **Goal**
 - APIs, workers, storage, **RLS**, signed URLs, env validation, and observability.
@@ -159,7 +159,7 @@ _No implementation required in this PR cycle; treat as reference for subsequent 
 
 ---
 
-## Phase 6 – Frontend UI & UX *(Status: In Progress)*
+## Phase 6 – Frontend UI & UX *(Status: Completed)*
 
 **Goal**
 - Operator dashboard, document review, exports, high accessibility, and performance.

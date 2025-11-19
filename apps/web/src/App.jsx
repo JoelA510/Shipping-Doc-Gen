@@ -1,28 +1,27 @@
-import React from 'react';
-import { MasterLibraryProvider } from './components/contexts/MasterLibraryContext';
-import { SearchProvider } from './components/contexts/SearchContext';
-import MasterLibraryResults from './components/masterLibrary/MasterLibraryResults';
-import MasterLibraryToolbar from './components/masterLibrary/MasterLibraryToolbar';
-import SearchBar from './components/search/SearchBar';
-import SearchResults from './components/search/SearchResults';
+import React, { useState } from 'react';
+import UploadZone from './components/upload/UploadZone';
+import DocumentReview from './components/review/DocumentReview';
 
 function App() {
-  return (
-    <MasterLibraryProvider>
-      <SearchProvider>
-        <div className="app">
-          <h1>Task Search</h1>
-          <SearchBar />
-          <SearchResults />
+  const [currentDoc, setCurrentDoc] = useState(null);
 
-          <section className="mt-6">
-            <h2>Master Library</h2>
-            <MasterLibraryToolbar />
-            <MasterLibraryResults />
-          </section>
-        </div>
-      </SearchProvider>
-    </MasterLibraryProvider>
+  return (
+    <div className="app min-h-screen bg-gray-100 p-8">
+      <header className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">Shipping Doc Gen</h1>
+      </header>
+
+      <main className="max-w-6xl mx-auto">
+        {!currentDoc ? (
+          <UploadZone onDocumentReady={setCurrentDoc} />
+        ) : (
+          <DocumentReview
+            document={currentDoc}
+            onBack={() => setCurrentDoc(null)}
+          />
+        )}
+      </main>
+    </div>
   );
 }
 
