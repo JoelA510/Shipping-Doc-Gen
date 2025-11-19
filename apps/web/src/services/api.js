@@ -1,12 +1,11 @@
-const API_URL = 'http://localhost:3001';
+const API_URL = 'http://localhost:3003';
 
-// Mock auth token for prototype
-const AUTH_TOKEN = 'mysecret';
+let authToken = localStorage.getItem('token');
 
-async function request(endpoint, options = {}) {
+const request = async (endpoint, options = {}) => {
     const headers = {
-        'Authorization': `Bearer ${AUTH_TOKEN}`,
-        ...options.headers
+        ...options.headers,
+        'Authorization': authToken ? `Bearer ${authToken}` : undefined
     };
 
     const response = await fetch(`${API_URL}${endpoint}`, {
@@ -15,14 +14,36 @@ async function request(endpoint, options = {}) {
     });
 
     if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(error.error || `Request failed: ${response.status}`);
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || `Request failed: ${response.statusText}`);
     }
 
     return response.json();
-}
+};
 
 export const api = {
+    setToken: (token) => {
+        authToken = token;
+        if (token) localStorage.setItem('token', token);
+        else localStorage.removeItem('token');
+    },
+
+    login: async (username, password) => {
+        return request('/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+    },
+
+    register: async (username, password) => {
+        return request('/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+    },
+
     uploadFile: async (file) => {
         const formData = new FormData();
         formData.append('file', file);
@@ -53,6 +74,22 @@ export const api = {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ type })
+        });
+    },
+
+    getHistory: async (docId) => {
+        return request(`/documents/${docId}/history`);
+    },
+
+    getComments: async (docId) => {
+        return request(`/documents/${docId}/comments`);
+    },
+
+    addComment: async (docId, text, user) => {
+        return request(`/documents/${docId}/comments`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text, user })
         });
     }
 };

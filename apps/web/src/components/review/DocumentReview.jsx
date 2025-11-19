@@ -8,6 +8,40 @@ export default function DocumentReview({ document, onBack }) {
     const [isSaving, setIsSaving] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
     const [message, setMessage] = useState(null);
+    const [history, setHistory] = useState([]);
+    const [comments, setComments] = useState([]);
+    const [newComment, setNewComment] = useState('');
+
+    useEffect(() => {
+        if (doc.id) {
+            loadHistoryAndComments();
+        }
+    }, [doc.id]);
+
+    const loadHistoryAndComments = async () => {
+        try {
+            const [h, c] = await Promise.all([
+                api.getHistory(doc.id),
+                api.getComments(doc.id)
+            ]);
+            setHistory(h);
+            setComments(c);
+        } catch (err) {
+            console.error('Failed to load history/comments', err);
+        }
+    };
+
+    const handleAddComment = async (e) => {
+        e.preventDefault();
+        if (!newComment.trim()) return;
+        try {
+            await api.addComment(doc.id, newComment, 'current-user'); // Should use actual user
+            setNewComment('');
+            loadHistoryAndComments();
+        } catch (err) {
+            setMessage({ type: 'error', text: `Failed to add comment: ${err.message}` });
+        }
+    };
 
     const { header, lines, meta } = doc;
     const validationErrors = meta.validation || [];
@@ -192,6 +226,56 @@ export default function DocumentReview({ document, onBack }) {
                             ))}
                         </tbody>
                     </table>
+                </div>
+            </div>
+            <div className="grid grid-cols-2 gap-6">
+                <div className="bg-white shadow rounded p-4">
+                    <h3 className="font-bold mb-4 text-gray-700">History</h3>
+                    <div className="max-h-60 overflow-y-auto">
+                        {history.length === 0 ? (
+                            <p className="text-gray-500 text-sm">No history yet.</p>
+                        ) : (
+                            <ul className="space-y-2">
+                                {history.map((item, i) => (
+                                    <li key={i} className="text-sm border-b pb-2">
+                                        <span className="font-medium">{item.user}</span> <span className="text-gray-500">{item.action}</span>
+                                        <div className="text-xs text-gray-400">{new Date(item.timestamp).toLocaleString()}</div>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+                </div>
+
+                <div className="bg-white shadow rounded p-4">
+                    <h3 className="font-bold mb-4 text-gray-700">Comments</h3>
+                    <div className="max-h-40 overflow-y-auto mb-4 space-y-3">
+                        {comments.length === 0 ? (
+                            <p className="text-gray-500 text-sm">No comments yet.</p>
+                        ) : (
+                            comments.map((comment) => (
+                                <div key={comment.id} className="bg-gray-50 p-2 rounded">
+                                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                                        <span className="font-bold">{comment.user}</span>
+                                        <span>{new Date(comment.timestamp).toLocaleString()}</span>
+                                    </div>
+                                    <p className="text-sm">{comment.text}</p>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                    <form onSubmit={handleAddComment} className="flex gap-2">
+                        <input
+                            type="text"
+                            value={newComment}
+                            onChange={(e) => setNewComment(e.target.value)}
+                            placeholder="Add a comment..."
+                            className="flex-1 p-2 border rounded text-sm"
+                        />
+                        <button type="submit" className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">
+                            Post
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>

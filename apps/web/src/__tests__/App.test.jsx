@@ -1,10 +1,10 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import App from '../src/App';
-import { api } from '../src/services/api';
+import App from '../App';
+import { api } from '../services/api';
 
 // Mock API
-jest.mock('../src/services/api', () => ({
+jest.mock('../services/api', () => ({
     api: {
         uploadFile: jest.fn(),
         getJob: jest.fn(),
@@ -12,10 +12,32 @@ jest.mock('../src/services/api', () => ({
     }
 }));
 
+// Mock the Login component to avoid auth flow in tests
+jest.mock('../components/auth/Login', () => {
+    return function MockLogin({ onLogin }) {
+        return (
+            <button onClick={() => onLogin({ username: 'testuser' }, 'fake-token')}>
+                Mock Login
+            </button>
+        );
+    };
+});
+
 describe('App Integration', () => {
-    it('renders upload zone initially', () => {
+    test('renders login and allows access', () => {
         render(<App />);
-        expect(screen.getByText(/Drag & Drop your CIPL file here/i)).toBeInTheDocument();
+        const loginButton = screen.getByText(/Mock Login/i);
+        fireEvent.click(loginButton);
+        const headerElement = screen.getByText(/Shipping Doc Gen/i);
+        expect(headerElement).toBeInTheDocument();
+    });
+
+    test('renders upload zone after login', () => {
+        render(<App />);
+        const loginButton = screen.getByText(/Mock Login/i);
+        fireEvent.click(loginButton);
+        const uploadText = screen.getByText(/Drag & Drop your CIPL file here/i);
+        expect(uploadText).toBeInTheDocument();
     });
 
     it('switches to review after successful upload', async () => {

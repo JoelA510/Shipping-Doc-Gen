@@ -21,7 +21,7 @@ const documents = new Map();
 // Worker processor
 const worker = new Worker('ingestion', async job => {
     const { fileBuffer, fileName, jobId } = job.data;
-    
+
     // Update local job status (simulating DB update)
     const localJob = jobs.get(jobId);
     if (localJob) {
@@ -31,7 +31,7 @@ const worker = new Worker('ingestion', async job => {
 
     try {
         const ext = fileName.split('.').pop().toLowerCase();
-        
+
         // Map mimetype/extension to ingestion types
         let type = 'pdf';
         if (ext === 'xlsx') type = 'xlsx';
@@ -51,6 +51,14 @@ const worker = new Worker('ingestion', async job => {
             id: docId,
             jobId: jobId,
             ...result,
+            history: [
+                {
+                    action: 'created',
+                    timestamp: new Date().toISOString(),
+                    user: 'system'
+                }
+            ],
+            comments: [],
             createdAt: new Date().toISOString()
         };
         documents.set(docId, doc);

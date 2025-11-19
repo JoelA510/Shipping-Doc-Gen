@@ -52,4 +52,47 @@ router.post('/:id/export', async (req, res) => {
     }
 });
 
+// Get history
+router.get('/:id/history', async (req, res) => {
+    const doc = await getDocument(req.params.id);
+    if (!doc) return res.status(404).json({ error: 'Document not found' });
+    res.json(doc.history || []);
+});
+
+// Get comments
+router.get('/:id/comments', async (req, res) => {
+    const doc = await getDocument(req.params.id);
+    if (!doc) return res.status(404).json({ error: 'Document not found' });
+    res.json(doc.comments || []);
+});
+
+// Add comment
+router.post('/:id/comments', async (req, res) => {
+    const doc = await getDocument(req.params.id);
+    if (!doc) return res.status(404).json({ error: 'Document not found' });
+
+    const { text, user } = req.body;
+    if (!text) return res.status(400).json({ error: 'Comment text required' });
+
+    const comment = {
+        id: Date.now().toString(),
+        text,
+        user: user || 'anonymous',
+        timestamp: new Date().toISOString()
+    };
+
+    if (!doc.comments) doc.comments = [];
+    doc.comments.push(comment);
+
+    // Also add to history
+    if (!doc.history) doc.history = [];
+    doc.history.push({
+        action: 'comment_added',
+        timestamp: new Date().toISOString(),
+        user: user || 'anonymous'
+    });
+
+    res.status(201).json(comment);
+});
+
 module.exports = router;

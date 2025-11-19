@@ -15,16 +15,12 @@ function requireAuth(req, res, next) {
     // Let's check against the env secret for basic security.
 
     try {
-        const config = validateEnv();
-        if (token !== config.authSecret) {
-            return res.status(403).json({ error: 'Invalid token' });
-        }
-
-        // Mock user
-        req.user = { id: 'user-1', role: 'operator' };
+        const authService = require('../services/auth');
+        const decoded = authService.verifyToken(token);
+        req.user = { id: decoded.id, username: decoded.username };
         next();
     } catch (error) {
-        return res.status(500).json({ error: 'Auth configuration error' });
+        return res.status(403).json({ error: 'Invalid token' });
     }
 }
 
