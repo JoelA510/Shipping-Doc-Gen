@@ -69,14 +69,37 @@ async function parsePdf(buffer) {
       meta.raw.details = result.info || {};
     } catch (parseError) {
       // Fallback to OCR extraction for scanned PDFs
-      const { extractTextFromPdf } = require('../../ocr/ocr');
       try {
-        text = await extractTextFromPdf(buffer);
+        // Check if OCR is enabled
+        if (process.env.OCR_ENABLED !== 'true') {
+          throw new Error('OCR disabled');
+        }
+
+        // Check if OCR service is available (via env or default)
+        const ocrUrl = process.env.OCR_SERVICE_URL || 'http://ocr:5000';
+
+        // Create form data for upload
+        const formData = new FormData();
+        const blob = new Blob([buffer], { type: 'application/pdf' });
+        formData.append('file', blob, 'document.pdf');
+
+        const response = await fetch(`${ocrUrl}/extract`, {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) {
+          throw new Error(`OCR Service responded with ${response.status}`);
+        }
+
+        const data = await response.json();
+        text = data.text;
+
         meta.raw.fallback = true;
         meta.raw.ocr = true;
       } catch (ocrError) {
         // If OCR also fails, rethrow original parse error with additional context
-        parseError.message += ' | OCR fallback also failed.';
+        parseError.message += ` | OCR fallback also failed: ${ocrError.message}`;
         throw parseError;
       }
     }

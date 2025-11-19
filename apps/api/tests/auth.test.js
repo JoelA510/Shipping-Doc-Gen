@@ -1,10 +1,18 @@
-const request = require('supertest');
-const app = require('../src/index');
-
 // Mock env for testing
 process.env.AUTH_SECRET = 'test-secret';
 process.env.STORAGE_PATH = './test-storage';
 process.env.PORT = '3002';
+
+const request = require('supertest');
+
+// Mock queue BEFORE requiring app
+jest.mock('../src/queue/index', () => ({
+    createJob: jest.fn(),
+    getJob: jest.fn(),
+    getDocument: jest.fn()
+}));
+
+const app = require('../src/index');
 
 describe('Auth Middleware', () => {
     it('should return 401 if no token provided', async () => {

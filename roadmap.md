@@ -63,7 +63,7 @@ A web app that ingests CIPL documents in many formats, normalize...L outputs for
 * **Golden data + accuracy report:** Seeded `tests/golden/{pdf,xlsx,csv,docx}` fixtures plus `expected.json` snapshots. Node test coverage validates canonical output per format, size-limit guards, and accuracy script summarizing per-field success.
 * **Next up:** Wire optional OCR fallback (currently stubbing via plain-text fallback for PDFs), surface normalization metadata in telemetry, and wrap the package with minimal API/CLI for manual operator trials.
 
-### Phase 3 - Full Ingestion Pipeline **(Status: Completed)**
+### Phase 3 - Full Ingestion Pipeline **(Status: In Progress)**
 
 * Drag and drop upload with progress. ZIP fan-out. Queue jobs...ervice. Persist interim raw text or HOCR. Robust error states.
 
@@ -72,7 +72,7 @@ A web app that ingests CIPL documents in many formats, normalize...L outputs for
 * Field mappers with layout-aware extraction. Normalization rules...dation of part/qty/weight/value at line and header levels.
 * **Compliance validators:** Add HTS/Schedule B and COO checks with an explicit error catalog and auto-generated checksum rows.
 
-### Phase 5 - Backend Infra and Security **(Status: Completed)**
+### Phase 5 - Backend Infra and Security **(Status: In Progress)**
 
 * API, storage, workers, auth stubs. Back-pressure and retries. ...rsistent idempotency for uploads and parsing tasks.
 * **Security hardening:** Enforce RLS policies (if Supabase), use signed URLs for blobs, redact sensitive fields in logs, and add `.env` schema validation.

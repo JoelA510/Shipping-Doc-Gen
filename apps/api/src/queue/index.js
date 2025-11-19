@@ -1,63 +1,104 @@
 const { parseFile } = require('@shipping-doc-gen/ingestion');
+const { Queue, Worker } = require('bullmq');
+const IORedis = require('ioredis');
 const { v4: uuidv4 } = require('uuid');
 
-// In-memory store for jobs
+// Redis connection
+const connection = new IORedis({
+    host: process.env.REDIS_HOST || 'localhost',
+    port: process.env.REDIS_PORT || 6379,
+    maxRetriesPerRequest: null
+});
+
+// Create Queue
+const ingestionQueue = new Queue('ingestion', { connection });
+
+// In-memory store for job status (for simple polling) and documents
+// In a real app, this would be in Redis or a DB
 const jobs = new Map();
 const documents = new Map();
 
-async function processJob(jobId, file) {
-    const job = jobs.get(jobId);
-    if (!job) return;
+// Worker processor
+const worker = new Worker('ingestion', async job => {
+    const { fileBuffer, fileName, jobId } = job.data;
+    
+    // Update local job status (simulating DB update)
+    const localJob = jobs.get(jobId);
+    if (localJob) {
+        localJob.status = 'processing';
+        localJob.updatedAt = new Date().toISOString();
+    }
 
     try {
-        job.status = 'processing';
-        job.updatedAt = new Date().toISOString();
-
-        // Simulate some processing time if needed, or just call directly
-        const ext = file.originalname.split('.').pop().toLowerCase();
-
+        const ext = fileName.split('.').pop().toLowerCase();
+        
         // Map mimetype/extension to ingestion types
         let type = 'pdf';
         if (ext === 'xlsx') type = 'xlsx';
         if (ext === 'csv') type = 'csv';
         if (ext === 'docx') type = 'docx';
 
-        const result = await parseFile(file.buffer, type);
+        // Convert buffer back from JSON/base64 if needed (BullMQ serializes args)
+        // But here we are passing buffer directly? BullMQ handles JSON.
+        // Buffer needs to be reconstructed from the serialized object if passed as object
+        const buffer = Buffer.from(fileBuffer.data);
+
+        const result = await parseFile(buffer, type);
 
         // Store result
         const docId = uuidv4();
-        documents.set(docId, {
+        const doc = {
             id: docId,
             jobId: jobId,
             ...result,
             createdAt: new Date().toISOString()
-        });
+        };
+        documents.set(docId, doc);
 
-        job.status = 'completed';
-        job.documentId = docId;
-        job.updatedAt = new Date().toISOString();
+        if (localJob) {
+            localJob.status = 'completed';
+            localJob.documentId = docId;
+            localJob.updatedAt = new Date().toISOString();
+        }
+
+        return { documentId: docId };
     } catch (error) {
-        job.status = 'failed';
-        job.error = error.message;
-        job.updatedAt = new Date().toISOString();
+        if (localJob) {
+            localJob.status = 'failed';
+            localJob.error = error.message;
+            localJob.updatedAt = new Date().toISOString();
+        }
+        throw error;
     }
-}
+}, { connection });
 
-function createJob(file) {
+worker.on('completed', (job) => {
+    console.log(`Job ${job.id} has completed!`);
+});
+
+worker.on('failed', (job, err) => {
+    console.log(`Job ${job.id} has failed with ${err.message}`);
+});
+
+async function createJob(file) {
     const id = uuidv4();
-    const job = {
+    const jobData = {
         id,
         status: 'pending',
         fileName: file.originalname,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
     };
-    jobs.set(id, job);
+    jobs.set(id, jobData);
 
-    // Start processing asynchronously
-    processJob(id, file);
+    // Add to BullMQ
+    await ingestionQueue.add('parse', {
+        jobId: id,
+        fileName: file.originalname,
+        fileBuffer: file.buffer // BullMQ will serialize this
+    });
 
-    return job;
+    return jobData;
 }
 
 function getJob(id) {

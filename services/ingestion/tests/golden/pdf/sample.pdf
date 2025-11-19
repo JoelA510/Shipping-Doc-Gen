@@ -1,0 +1,10 @@
+Header:
+Shipper: Acme Exports
+Consignee: Global Imports
+Incoterm: FOB
+Currency: usd
+Reference: PO-12345
+
+Lines:
+W123 | Widget Assembly | 10 | 125.5 kg | 1500 USD | 847150 | US
+G456 | Gadget Kit | 5 | 25 kg | 750 USD | 902710 | CN

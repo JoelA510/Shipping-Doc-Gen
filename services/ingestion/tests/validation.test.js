@@ -1,3 +1,4 @@
+const { describe, it } = require('node:test');
 const assert = require('assert');
 const { validateHts, validateCoo, validateCompliance } = require('../src/validation/validators');
 const { ErrorCatalog } = require('../src/validation/catalog');
