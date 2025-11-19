@@ -2,7 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const uploadRouter = require('./routes/upload');
+const documentsRouter = require('./routes/documents');
 const statusRouter = require('./routes/status');
+const metricsRouter = require('./routes/metrics');
 const { validateEnv } = require('./config/env');
 const { requireAuth } = require('./middleware/auth');
 
@@ -28,6 +30,8 @@ app.get('/health', (req, res) => {
 
 // Protected routes
 app.use('/upload', requireAuth, uploadRouter);
+app.use('/documents', requireAuth, documentsRouter);
+app.use('/metrics', metricsRouter); // Metrics might need auth or be internal-only, keeping public for now or add auth
 app.use('/', requireAuth, statusRouter);
 
 if (require.main === module) {

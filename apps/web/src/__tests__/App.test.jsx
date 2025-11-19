@@ -44,4 +44,74 @@ describe('App Integration', () => {
         await waitFor(() => expect(screen.getByText(/Document Review/i)).toBeInTheDocument());
         expect(screen.getByText(/Test Shipper/i)).toBeInTheDocument();
     });
+    it('allows editing and saving document', async () => {
+        // Mock successful flow
+        api.uploadFile.mockResolvedValue({ id: 'job-123' });
+        api.getJob.mockResolvedValue({ status: 'completed', documentId: 'doc-123' });
+        api.getDocument.mockResolvedValue({
+            id: 'doc-123',
+            header: { shipper: 'Test Shipper' },
+            lines: [],
+            meta: { validation: [] }
+        });
+        api.updateDocument = jest.fn().mockResolvedValue({});
+
+        render(<App />);
+
+        // Simulate file drop
+        const file = new File(['dummy content'], 'test.pdf', { type: 'application/pdf' });
+        const input = screen.getByLabelText(/Browse Files/i);
+        fireEvent.change(input, { target: { files: [file] } });
+
+        // Wait for review screen
+        await waitFor(() => expect(screen.getByText(/Document Review/i)).toBeInTheDocument());
+
+        // Click Edit
+        fireEvent.click(screen.getByText('Edit'));
+
+        // Change Shipper
+        const shipperInput = screen.getByDisplayValue('Test Shipper');
+        fireEvent.change(shipperInput, { target: { value: 'Updated Shipper' } });
+
+        // Click Save
+        fireEvent.click(screen.getByText('Save Changes'));
+
+        // Verify API call
+        await waitFor(() => expect(api.updateDocument).toHaveBeenCalledWith('doc-123', expect.objectContaining({
+            header: expect.objectContaining({ shipper: 'Updated Shipper' })
+        })));
+
+        expect(screen.getByText('Document saved successfully')).toBeInTheDocument();
+    });
+
+    it('allows exporting document', async () => {
+        // Mock successful flow
+        api.uploadFile.mockResolvedValue({ id: 'job-123' });
+        api.getJob.mockResolvedValue({ status: 'completed', documentId: 'doc-123' });
+        api.getDocument.mockResolvedValue({
+            id: 'doc-123',
+            header: { shipper: 'Test Shipper' },
+            lines: [],
+            meta: { validation: [] }
+        });
+        api.triggerExport = jest.fn().mockResolvedValue({});
+
+        render(<App />);
+
+        // Simulate file drop
+        const file = new File(['dummy content'], 'test.pdf', { type: 'application/pdf' });
+        const input = screen.getByLabelText(/Browse Files/i);
+        fireEvent.change(input, { target: { files: [file] } });
+
+        // Wait for review screen
+        await waitFor(() => expect(screen.getByText(/Document Review/i)).toBeInTheDocument());
+
+        // Click Export
+        fireEvent.click(screen.getByText('Export SLI'));
+
+        // Verify API call
+        await waitFor(() => expect(api.triggerExport).toHaveBeenCalledWith('doc-123', 'sli'));
+
+        expect(screen.getByText(/Export started/i)).toBeInTheDocument();
+    });
 });

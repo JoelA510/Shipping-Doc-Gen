@@ -1,6 +1,8 @@
 process.env.AUTH_SECRET = 'test-secret';
 process.env.STORAGE_PATH = './test-storage';
 process.env.PORT = '3003';
+process.env.REDIS_HOST = 'localhost';
+process.env.REDIS_PORT = '6379';
 
 const request = require('supertest');
 // Mock queue BEFORE requiring app
@@ -22,7 +24,25 @@ jest.mock('../src/queue/index', () => ({
         id,
         header: { shipper: 'Mock Shipper' },
         lines: [{ partNumber: '123', description: 'Mock Item' }]
-    }))
+    })),
+    ingestionQueue: {
+        getJobCounts: jest.fn().mockResolvedValue({ waiting: 0, active: 0, completed: 0, failed: 0, delayed: 0 })
+    }
+}));
+
+// Mock storage
+jest.mock('../src/services/storage', () => ({
+    saveFile: jest.fn((buffer, name) => Promise.resolve({
+        path: `/tmp/test/${name}`,
+        url: `/files/${name}`,
+        filename: name
+    })),
+    getFilePath: jest.fn(name => `/tmp/test/${name}`)
+}));
+
+// Mock generator
+jest.mock('../src/services/generator', () => ({
+    generatePDF: jest.fn(() => Promise.resolve(Buffer.from('mock-pdf-content')))
 }));
 
 const app = require('../src/index');
@@ -69,5 +89,34 @@ describe('API Integration', () => {
         expect(docRes.body.header).toBeDefined();
         expect(docRes.body.lines).toBeDefined();
         expect(docRes.body.lines.length).toBeGreaterThan(0);
+    });
+
+
+    it('should update a document', async () => {
+        const docId = 'mock-doc-id';
+        const updateData = {
+            header: { shipper: 'Updated Shipper' },
+            lines: []
+        };
+
+        const res = await request(app)
+            .put(`/documents/${docId}`)
+            .set('Authorization', 'Bearer test-secret')
+            .send(updateData);
+
+        expect(res.statusCode).toBe(200);
+        expect(res.body.header.shipper).toBe('Updated Shipper');
+    });
+
+    it('should trigger an export', async () => {
+        const docId = 'mock-doc-id';
+        const res = await request(app)
+            .post(`/documents/${docId}/export`)
+            .set('Authorization', 'Bearer test-secret')
+            .send({ type: 'sli' });
+
+        expect(res.statusCode).toBe(200);
+        expect(res.body.message).toBe('Export complete');
+        expect(res.body.url).toBeDefined();
     });
 });

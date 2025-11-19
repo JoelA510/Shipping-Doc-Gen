@@ -63,7 +63,7 @@ A web app that ingests CIPL documents in many formats, normalize...L outputs for
 * **Golden data + accuracy report:** Seeded `tests/golden/{pdf,xlsx,csv,docx}` fixtures plus `expected.json` snapshots. Node test coverage validates canonical output per format, size-limit guards, and accuracy script summarizing per-field success.
 * **Next up:** Wire optional OCR fallback (currently stubbing via plain-text fallback for PDFs), surface normalization metadata in telemetry, and wrap the package with minimal API/CLI for manual operator trials.
 
-### Phase 3 - Full Ingestion Pipeline **(Status: In Progress)**
+### Phase 3 - Full Ingestion Pipeline **(Status: Completed)**
 
 * Drag and drop upload with progress. ZIP fan-out. Queue jobs...ervice. Persist interim raw text or HOCR. Robust error states.
 

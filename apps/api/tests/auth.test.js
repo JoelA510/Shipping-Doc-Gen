@@ -2,6 +2,8 @@
 process.env.AUTH_SECRET = 'test-secret';
 process.env.STORAGE_PATH = './test-storage';
 process.env.PORT = '3002';
+process.env.REDIS_HOST = 'localhost';
+process.env.REDIS_PORT = '6379';
 
 const request = require('supertest');
 

@@ -1,15 +1,15 @@
 const express = require('express');
 const multer = require('multer');
 const { createJob } = require('../queue');
+const AdmZip = require('adm-zip');
+const { v4: uuidv4 } = require('uuid');
+const { saveFile } = require('../services/storage');
 
 const router = express.Router();
 const upload = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: 100 * 1024 * 1024 } // 100MB limit
 });
-
-const AdmZip = require('adm-zip');
-const { v4: uuidv4 } = require('uuid');
 
 router.post('/', upload.single('file'), async (req, res) => {
     if (!req.file) {
@@ -26,17 +26,28 @@ router.post('/', upload.single('file'), async (req, res) => {
 
             for (const entry of zipEntries) {
                 if (!entry.isDirectory && !entry.entryName.startsWith('__MACOSX') && !entry.entryName.startsWith('.')) {
-                    // Create a pseudo-file object for the queue
-                    const fileData = {
+                    // Save extracted file to storage
+                    const savedFile = await saveFile(entry.getData(), entry.name);
+
+                    const jobData = {
                         originalname: entry.name,
-                        buffer: entry.getData()
+                        storagePath: savedFile.path,
+                        filename: savedFile.filename
                     };
-                    const job = await createJob(fileData);
+                    const job = await createJob(jobData);
                     jobs.push(job);
                 }
             }
         } else {
-            const job = await createJob(req.file);
+            // Save uploaded file to storage
+            const savedFile = await saveFile(req.file.buffer, req.file.originalname);
+
+            const jobData = {
+                originalname: req.file.originalname,
+                storagePath: savedFile.path,
+                filename: savedFile.filename
+            };
+            const job = await createJob(jobData);
             jobs.push(job);
         }
 

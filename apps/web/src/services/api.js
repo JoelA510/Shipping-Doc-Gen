@@ -38,5 +38,21 @@ export const api = {
 
     getDocument: async (docId) => {
         return request(`/documents/${docId}`);
+    },
+
+    updateDocument: async (docId, data) => {
+        return request(`/documents/${docId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+    },
+
+    triggerExport: async (docId, type = 'sli') => {
+        return request(`/documents/${docId}/export`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type })
+        });
     }
 };
