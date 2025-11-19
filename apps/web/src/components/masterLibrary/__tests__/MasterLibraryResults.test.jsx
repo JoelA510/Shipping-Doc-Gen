@@ -1,28 +1,32 @@
+import { vi } from 'vitest';
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import MasterLibraryResults from '../MasterLibraryResults';
 import { MasterLibraryContext } from '../../contexts/MasterLibraryContext';
 
-jest.mock('react-window', () => ({
-  FixedSizeList: jest.requireActual('react').forwardRef(
-    ({ itemCount, itemData, children, outerElementType: Outer = 'div' }, ref) => {
-      const listApi = { scrollToItem: () => {} };
-      if (typeof ref === 'function') {
-        ref(listApi);
-      } else if (ref) {
-        ref.current = listApi;
-      }
+vi.mock('react-window', async () => {
+  const React = await vi.importActual('react');
+  return {
+    FixedSizeList: React.forwardRef(
+      ({ itemCount, itemData, children, outerElementType: Outer = 'div' }, ref) => {
+        const listApi = { scrollToItem: () => { } };
+        if (typeof ref === 'function') {
+          ref(listApi);
+        } else if (ref) {
+          ref.current = listApi;
+        }
 
-      return (
-        <Outer data-testid="virtual-list" data-count={itemCount}>
-          {Array.from({ length: Math.min(itemCount, itemData.length, 5) }).map((_, index) =>
-            children({ index, style: {}, data: itemData })
-          )}
-        </Outer>
-      );
-    }
-  )
-}));
+        return (
+          <Outer data-testid="virtual-list" data-count={itemCount}>
+            {Array.from({ length: Math.min(itemCount, itemData.length, 5) }).map((_, index) =>
+              children({ index, style: {}, data: itemData })
+            )}
+          </Outer>
+        );
+      }
+    )
+  };
+});
 
 beforeAll(() => {
   window.requestAnimationFrame = (callback) => callback();
@@ -30,7 +34,7 @@ beforeAll(() => {
 
 describe('MasterLibraryResults', () => {
   it('renders metadata and virtualized templates', () => {
-    const setPage = jest.fn();
+    const setPage = vi.fn();
     const items = Array.from({ length: 500 }, (_, index) => ({ id: `template-${index}`, title: `Template ${index}` }));
 
     render(
@@ -43,7 +47,7 @@ describe('MasterLibraryResults', () => {
           limit: 20,
           isLoading: false,
           error: null,
-          checkTaskLibraryStatus: jest.fn()
+          checkTaskLibraryStatus: vi.fn()
         }}
       >
         <MasterLibraryResults />
@@ -64,11 +68,11 @@ describe('MasterLibraryResults', () => {
           items: [],
           count: 0,
           page: 0,
-          setPage: jest.fn(),
+          setPage: vi.fn(),
           limit: 20,
           isLoading: false,
           error: null,
-          checkTaskLibraryStatus: jest.fn()
+          checkTaskLibraryStatus: vi.fn()
         }}
       >
         <MasterLibraryResults />
@@ -88,11 +92,11 @@ describe('MasterLibraryResults', () => {
           items,
           count: 5,
           page: 0,
-          setPage: jest.fn(),
+          setPage: vi.fn(),
           limit: 20,
           isLoading: false,
           error: null,
-          checkTaskLibraryStatus: jest.fn()
+          checkTaskLibraryStatus: vi.fn()
         }}
       >
         <MasterLibraryResults />

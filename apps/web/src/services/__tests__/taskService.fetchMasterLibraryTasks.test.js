@@ -1,26 +1,27 @@
+import { vi } from 'vitest';
 import { fetchMasterLibraryTasks } from '../taskService';
 import { supabase, __mock } from '../supabaseClient';
 
-jest.mock('../supabaseClient', () => {
+vi.mock('../supabaseClient', () => {
   const createBuilder = () => {
     const state = { result: { data: [], error: null, count: 0 } };
     const builder = {
-      select: jest.fn(() => builder),
-      eq: jest.fn(() => builder),
-      ilike: jest.fn(() => builder),
-      order: jest.fn(() => builder),
-      range: jest.fn(() => builder),
-      abortSignal: jest.fn(() => builder),
+      select: vi.fn(() => builder),
+      eq: vi.fn(() => builder),
+      ilike: vi.fn(() => builder),
+      order: vi.fn(() => builder),
+      range: vi.fn(() => builder),
+      abortSignal: vi.fn(() => builder),
       __setResult: (result) => {
         state.result = result;
       },
-      then: jest.fn((resolve, reject) => Promise.resolve(state.result).then(resolve, reject))
+      then: vi.fn((resolve, reject) => Promise.resolve(state.result).then(resolve, reject))
     };
     return { builder, state };
   };
 
   let { builder, state } = createBuilder();
-  const from = jest.fn(() => builder);
+  const from = vi.fn(() => builder);
 
   const reset = () => {
     const created = createBuilder();
@@ -50,7 +51,7 @@ jest.mock('../supabaseClient', () => {
 
 describe('fetchMasterLibraryTasks', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     __mock.reset();
     __mock.setResult({ data: [], error: null, count: 0 });
   });

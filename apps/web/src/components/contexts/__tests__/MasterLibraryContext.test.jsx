@@ -1,11 +1,12 @@
+import { vi } from 'vitest';
 import React, { useContext } from 'react';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { MasterLibraryContext, MasterLibraryProvider } from '../MasterLibraryContext';
 import { fetchMasterLibraryTasks } from '../../../services/taskService';
 
-jest.mock('../../../services/taskService', () => ({
-  fetchFilteredTasks: jest.fn(),
-  fetchMasterLibraryTasks: jest.fn()
+vi.mock('../../../services/taskService', () => ({
+  fetchFilteredTasks: vi.fn(),
+  fetchMasterLibraryTasks: vi.fn()
 }));
 
 const mockFetchMasterLibraryTasks = fetchMasterLibraryTasks;
@@ -16,7 +17,7 @@ const wrapper = ({ children }) => (
 
 describe('MasterLibraryProvider', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockFetchMasterLibraryTasks.mockResolvedValue({ data: [], count: 0, from: 0, limit: 20 });
     window.localStorage.clear();
   });

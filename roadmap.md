@@ -87,7 +87,7 @@ A web app that ingests CIPL documents in many formats, normalize...L outputs for
 * NCBFAA SLI and initial BOL templates. Template versioning and ... of record for what was sent to carriers and when.
 * **Output generation:** Map canonical JSON to SLI/BOL templates (start with FedEx and DHL). Provide HTML→PDF rendering with deterministic pagination and template versioning.
 
-### Phase 8 - Accounts, Collaboration, History **(Status: In Progress)**
+### Phase 8 - Accounts, Collaboration, History **(Status: Completed)**
 
 * Roles, audit log, comment threads, and history of edits per doc...iew routing. Multi-tenant readiness checklist.
 

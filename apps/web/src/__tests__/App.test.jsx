@@ -1,25 +1,28 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { vi } from 'vitest';
 import App from '../App';
 import { api } from '../services/api';
 
 // Mock API
-jest.mock('../services/api', () => ({
+vi.mock('../services/api', () => ({
     api: {
-        uploadFile: jest.fn(),
-        getJob: jest.fn(),
-        getDocument: jest.fn()
+        uploadFile: vi.fn(),
+        getJob: vi.fn(),
+        getDocument: vi.fn()
     }
 }));
 
 // Mock the Login component to avoid auth flow in tests
-jest.mock('../components/auth/Login', () => {
-    return function MockLogin({ onLogin }) {
-        return (
-            <button onClick={() => onLogin({ username: 'testuser' }, 'fake-token')}>
-                Mock Login
-            </button>
-        );
+vi.mock('../components/auth/Login', () => {
+    return {
+        default: function MockLogin({ onLogin }) {
+            return (
+                <button onClick={() => onLogin({ username: 'testuser' }, 'fake-token')}>
+                    Mock Login
+                </button>
+            );
+        }
     };
 });
 
@@ -76,7 +79,7 @@ describe('App Integration', () => {
             lines: [],
             meta: { validation: [] }
         });
-        api.updateDocument = jest.fn().mockResolvedValue({});
+        api.updateDocument = vi.fn().mockResolvedValue({});
 
         render(<App />);
 
@@ -116,7 +119,7 @@ describe('App Integration', () => {
             lines: [],
             meta: { validation: [] }
         });
-        api.triggerExport = jest.fn().mockResolvedValue({});
+        api.triggerExport = vi.fn().mockResolvedValue({});
 
         render(<App />);
 

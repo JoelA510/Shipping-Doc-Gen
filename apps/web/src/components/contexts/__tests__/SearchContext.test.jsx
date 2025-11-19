@@ -1,11 +1,12 @@
+import { vi } from 'vitest';
 import React, { useContext } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { SearchContext, SearchProvider } from '../SearchContext';
 import { fetchFilteredTasks } from '../../../services/taskService';
 
-jest.mock('../../../services/taskService', () => ({
-  fetchFilteredTasks: jest.fn(),
-  fetchMasterLibraryTasks: jest.fn()
+vi.mock('../../../services/taskService', () => ({
+  fetchFilteredTasks: vi.fn(),
+  fetchMasterLibraryTasks: vi.fn()
 }));
 
 const mockFetchFilteredTasks = fetchFilteredTasks;
@@ -36,7 +37,7 @@ function Harness() {
 
 describe('SearchProvider', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockFetchFilteredTasks.mockResolvedValue({ data: [], count: 0, from: 0, limit: 20 });
     window.localStorage.clear();
   });

@@ -1,10 +1,11 @@
+import { vi } from 'vitest';
 import React, { useState } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import TemplateDetailsPanel from '../TemplateDetailsPanel';
 
-const mockCheckTaskLibraryStatus = jest.fn();
+const mockCheckTaskLibraryStatus = vi.fn();
 
-jest.mock('../../../hooks/useMasterLibrary', () => ({
+vi.mock('../../../hooks/useMasterLibrary', () => ({
   useMasterLibrary: () => ({
     checkTaskLibraryStatus: mockCheckTaskLibraryStatus
   })

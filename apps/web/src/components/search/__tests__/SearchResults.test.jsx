@@ -1,28 +1,32 @@
+import { vi } from 'vitest';
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import SearchResults from '../SearchResults';
 import { SearchContext } from '../../contexts/SearchContext';
 
-jest.mock('react-window', () => ({
-  FixedSizeList: jest.requireActual('react').forwardRef(
-    ({ itemCount, itemData, children, outerElementType: Outer = 'div' }, ref) => {
-      const listApi = { scrollToItem: () => {} };
-      if (typeof ref === 'function') {
-        ref(listApi);
-      } else if (ref) {
-        ref.current = listApi;
-      }
+vi.mock('react-window', async () => {
+  const React = await vi.importActual('react');
+  return {
+    FixedSizeList: React.forwardRef(
+      ({ itemCount, itemData, children, outerElementType: Outer = 'div' }, ref) => {
+        const listApi = { scrollToItem: () => { } };
+        if (typeof ref === 'function') {
+          ref(listApi);
+        } else if (ref) {
+          ref.current = listApi;
+        }
 
-      return (
-        <Outer data-testid="virtual-list" data-count={itemCount}>
-          {Array.from({ length: Math.min(itemCount, itemData.length, 5) }).map((_, index) =>
-            children({ index, style: {}, data: itemData })
-          )}
-        </Outer>
-      );
-    }
-  )
-}));
+        return (
+          <Outer data-testid="virtual-list" data-count={itemCount}>
+            {Array.from({ length: Math.min(itemCount, itemData.length, 5) }).map((_, index) =>
+              children({ index, style: {}, data: itemData })
+            )}
+          </Outer>
+        );
+      }
+    )
+  };
+});
 
 beforeAll(() => {
   window.requestAnimationFrame = (callback) => callback();
@@ -30,7 +34,7 @@ beforeAll(() => {
 
 describe('SearchResults', () => {
   it('renders pagination metadata and virtualized items', () => {
-    const setPage = jest.fn();
+    const setPage = vi.fn();
     const results = Array.from({ length: 1000 }, (_, index) => ({ id: index, title: `Task ${index}` }));
 
     render(
@@ -67,7 +71,7 @@ describe('SearchResults', () => {
           results: [],
           count: 0,
           page: 0,
-          setPage: jest.fn(),
+          setPage: vi.fn(),
           limit: 20,
           isLoading: false,
           error: null
@@ -90,7 +94,7 @@ describe('SearchResults', () => {
           results,
           count: 5,
           page: 0,
-          setPage: jest.fn(),
+          setPage: vi.fn(),
           limit: 20,
           isLoading: false,
           error: null
