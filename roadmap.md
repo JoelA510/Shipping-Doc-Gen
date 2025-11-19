@@ -91,7 +91,7 @@ A web app that ingests CIPL documents in many formats, normalize...L outputs for
 
 * Roles, audit log, comment threads, and history of edits per doc...iew routing. Multi-tenant readiness checklist.
 
-### Phase 9 - QA and Testing **(Status: In Progress)**
+### Phase 9 - QA and Testing **(Status: Completed)**
 
 * Unit tests for mappers, validators, and exporters. Integration ...arsing pipeline, storage interactions, and template rendering.
 * **E2E coverage (Playwright) — gate on CI:** Saved filters across reloads; pagination reset on any filter change; comma-in-title search; keyboard navigation of virtualized results.

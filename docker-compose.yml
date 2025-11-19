@@ -5,40 +5,55 @@ services:
     build: ./apps/api
     ports:
       - "3001:3001"
+    env_file:
+      - .env
     environment:
+      - NODE_ENV=production
       - PORT=3001
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - OCR_SERVICE_URL=http://ocr:3002
     depends_on:
       - redis
-    volumes:
-      - ./apps/api:/app
-      - /app/node_modules
+      - ocr
+    restart: unless-stopped
+   volumes:
+      - api_storage:/app/storage
+    networks:
+      - app-network
 
   web:
     build: ./apps/web
     ports:
-      - "3000:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:3001
-    volumes:
-      - ./apps/web:/app
-      - /app/node_modules
+      - "80:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - app-network
 
   ocr:
     build: ./services/ocr
-    ports:
-      - "5000:5000"
-    volumes:
-      - ./services/ocr:/app
-      - /app/node_modules
+    expose:
+      - "3002"
+    restart: unless-stopped
+    networks:
+      - app-network
 
   redis:
     image: redis:alpine
-    ports:
-      - "6379:6379"
+    expose:
+      - "6379"
     volumes:
       - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - app-network
 
 volumes:
   redis_data:
+  api_storage:
+
+networks:
+  app-network:
+    driver: bridge
