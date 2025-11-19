@@ -1,4 +1,4 @@
-const XLSX = require('xlsx');
+const XLSX = require('xlsx-js-style');
 const { normalizeDocument } = require('../utils');
 
 function parseHeaderSheet(sheet) {
