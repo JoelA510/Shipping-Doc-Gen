@@ -2,7 +2,9 @@ version: '3.8'
 
 services:
   api:
-    build: ./apps/api
+    build:
+      context: .
+      dockerfile: ./apps/api/Dockerfile
     ports:
       - "3001:3001"
     env_file:
@@ -12,12 +14,12 @@ services:
       - PORT=3001
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - OCR_SERVICE_URL=http://ocr:3002
+      - OCR_SERVICE_URL=http://ocr:5000
     depends_on:
       - redis
       - ocr
     restart: unless-stopped
-   volumes:
+    volumes:
       - api_storage:/app/storage
     networks:
       - app-network
@@ -34,8 +36,8 @@ services:
 
   ocr:
     build: ./services/ocr
-    expose:
-      - "3002"
+    ports:
+      - "5000:5000"
     restart: unless-stopped
     networks:
       - app-network

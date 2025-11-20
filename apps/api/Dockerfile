@@ -1,15 +1,16 @@
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+COPY . /app
 
-# Install dependencies
-RUN npm ci --only=production
+WORKDIR /app/apps/api
 
-# Copy application code
-COPY . .
+
+
+# Install dependencies for the API service
+
+RUN npm install --only=production
 
 # Expose port
 EXPOSE 3001
@@ -19,4 +20,5 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Start application
+USER node
 CMD ["node", "src/index.js"]
