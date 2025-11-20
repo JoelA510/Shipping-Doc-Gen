@@ -1,59 +1,108 @@
 import React, { useState, useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { LogOut, Ship, FileText } from 'lucide-react';
 import UploadZone from './components/upload/UploadZone';
 import DocumentReview from './components/review/DocumentReview';
 import Login from './components/auth/Login';
 import { api } from './services/api';
 
 function App() {
-    // Assuming these states and functions exist or will be added later
-    const [user, setUser] = useState(null); // Placeholder for user state
-    const [view, setView] = useState('upload'); // Placeholder for view state
-    const [currentDoc, setCurrentDoc] = useState(null); // Placeholder for currentDoc state
+    const [user, setUser] = useState(null);
+    const [view, setView] = useState('upload');
+    const [document, setDocument] = useState(null);
 
     const handleLogout = () => {
-        // Placeholder for logout logic
         console.log('Logging out...');
         setUser(null);
+        setDocument(null);
+        setView('upload');
     };
 
     // Placeholder for authentication logic
     useEffect(() => {
         // Simulate user login for demonstration
-        setUser({ username: 'TestUser' });
+        // In a real app, check for token in localStorage
+        // setUser({ username: 'TestUser' }); 
     }, []);
 
     if (!user) {
-        return <Login onLogin={setUser} />;
+        return (
+            <AnimatePresence mode="wait">
+                <Login onLogin={setUser} />
+            </AnimatePresence>
+        );
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            <header className="bg-white shadow-sm p-4 mb-6 flex justify-between items-center">
-                <h1 className="text-xl font-bold text-gray-800">Shipping Doc Gen</h1>
-                <div className="flex items-center gap-4">
-                    <span className="text-gray-600">Welcome, {user.username}</span>
-                    <button onClick={handleLogout} className="text-red-600 hover:text-red-800 text-sm">
-                        Logout
-                    </button>
+        <div className="min-h-screen bg-slate-50 flex flex-col">
+            <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-primary-600 p-2 rounded-lg">
+                            <Ship className="w-6 h-6 text-white" />
+                        </div>
+                        <h1 className="text-xl font-bold text-slate-900 tracking-tight">Shipping Doc Gen</h1>
+                    </div>
+
+                    <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-3 px-4 py-2 bg-slate-50 rounded-full border border-slate-100">
+                            <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center text-primary-700 font-semibold text-sm">
+                                {user.username.charAt(0).toUpperCase()}
+                            </div>
+                            <span className="text-sm font-medium text-slate-700">{user.username}</span>
+                        </div>
+                        <button
+                            onClick={handleLogout}
+                            className="text-slate-500 hover:text-red-600 transition-colors p-2 hover:bg-red-50 rounded-full"
+                            title="Logout"
+                        >
+                            <LogOut className="w-5 h-5" />
+                        </button>
+                    </div>
                 </div>
             </header>
-            <main className="container mx-auto px-4 pb-12">
-                {view === 'upload' && (
-                    <UploadZone onDocumentUploaded={(doc) => {
-                        setDocument(doc);
-                        setView('review');
-                    }} />
-                )}
-                {view === 'review' && document && (
-                    <DocumentReview
-                        document={document}
-                        user={user}
-                        onBack={() => {
-                            setDocument(null);
-                            setView('upload');
-                        }}
-                    />
-                )}
+
+            <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+                <AnimatePresence mode="wait">
+                    {view === 'upload' && (
+                        <motion.div
+                            key="upload"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ duration: 0.3 }}
+                            className="h-full flex flex-col"
+                        >
+                            <div className="mb-8 text-center">
+                                <h2 className="text-3xl font-bold text-slate-900 mb-2">Upload Shipping Documents</h2>
+                                <p className="text-slate-500 text-lg">Drag and drop your files to automatically extract and format data.</p>
+                            </div>
+                            <UploadZone onDocumentUploaded={(doc) => {
+                                setDocument(doc);
+                                setView('review');
+                            }} />
+                        </motion.div>
+                    )}
+
+                    {view === 'review' && document && (
+                        <motion.div
+                            key="review"
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            transition={{ duration: 0.3 }}
+                        >
+                            <DocumentReview
+                                document={document}
+                                user={user}
+                                onBack={() => {
+                                    setDocument(null);
+                                    setView('upload');
+                                }}
+                            />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </main>
         </div>
     );
