@@ -33,7 +33,7 @@ function parseLines(textBlock) {
     if (/^[-_=*]+$/.test(row.replace(/\s/g, ''))) continue;
 
     // Filter out common table headers and footer noise
-    const noiseRegex = /^(?:DESCRIPTION|QUANTITY|ORIGIN|MARKS|NOS|UNIT|PRICE|TOTAL|WEIGHT|MEASUREMENT|PCSTOTAL|PAGE|INVOICE|PACKING LIST|OMRON|BANKSTOWN|AUSTRALIA|KYOTO|SHIOKOJI|TEL:|CORP NO|AEO CODE|DATE:|PAYMENT|CONSIGNED|VESSEL|SHIPPED|DISCHARGE|NOTIFY|NETGROSS)/i;
+    const noiseRegex = /^(?:DESCRIPTION|QUANTITY|ORIGIN|MARKS|NOS|UNIT|PRICE|TOTAL|WEIGHT|MEASUREMENT|PCSTOTAL|PAGE|INVOICE|PACKING LIST|OMRON|BANKSTOWN|AUSTRALIA|KYOTO|SHIOKOJI|TEL:|CORP NO|AEO CODE|DATE:|PAYMENT|CONSIGNED|VESSEL|SHIPPED|DISCHARGE|NOTIFY|NETGROSS|FOB|TERMS|SHIPPER|SOLD TO|P\/O NUMBER|VOYAGE|PORT|DETAILS AS PER)/i;
     if (noiseRegex.test(row)) continue;
 
     // Strategy 1: Pipe separated
@@ -133,7 +133,22 @@ function parseLines(textBlock) {
       partNumber = '';
     }
 
-    // If we have no meaningful data, skip
+    // STRICTER VALIDATION:
+    // 1. If we only have a part number, it must look like a part number (no spaces, or specific format)
+    //    If it's a long sentence, it's garbage.
+    if (partNumber && !description && !htsCode && value === 0 && weight === 0) {
+      if (partNumber.includes(' ') && partNumber.length > 20) continue; // Likely a footer sentence
+      if (partNumber.length < 3) continue; // Too short
+      // If it's just digits, it might be a quantity or line number floating around
+      if (/^\d+$/.test(partNumber)) continue;
+    }
+
+    // 2. If we have a description, it shouldn't be just a number or "Empty"
+    if (description && (description === 'Empty' || /^\d+$/.test(description))) {
+      description = '';
+    }
+
+    // 3. Must have at least one meaningful field besides just quantity
     if (!partNumber && !description && !htsCode && value === 0 && weight === 0) continue;
 
     lines.push({
@@ -153,33 +168,34 @@ function extractSections(text) {
   // Try to split by explicit "Lines:" marker
   const sections = text.split(/\n\s*Lines:\s*/i);
 
+  let headerSection = text;
+  let linesSection = text;
+
   if (sections.length >= 2) {
     const [headerBlock, linesBlock] = sections;
-    return {
-      headerSection: headerBlock.replace(/Header:\s*/i, '').trim(),
-      linesSection: linesBlock.trim()
-    };
+    headerSection = headerBlock.replace(/Header:\s*/i, '').trim();
+    linesSection = linesBlock.trim();
+  } else {
+    // Fallback: If no "Lines:" marker, try to find common table headers
+    const tableStartRegex = /(?:Part\s*Number|Description|Qty|Quantity|Weight|Value)/i;
+    const match = text.match(tableStartRegex);
+
+    if (match) {
+      const index = match.index;
+      headerSection = text.substring(0, index).trim();
+      linesSection = text.substring(index).trim();
+    }
   }
 
-  // Fallback: If no "Lines:" marker, try to find common table headers
-  // This is a heuristic to find where the table starts
-  const tableStartRegex = /(?:Part\s*Number|Description|Qty|Quantity|Weight|Value)/i;
-  const match = text.match(tableStartRegex);
-
-  if (match) {
-    const index = match.index;
-    return {
-      headerSection: text.substring(0, index).trim(),
-      linesSection: text.substring(index).trim()
-    };
+  // IMPROVEMENT: Cut off the lines section at the footer/totals
+  // Look for common footer markers that appear AFTER the table
+  const footerRegex = /\n\s*(?:Total|Subtotal|Page\s+\d|Invoice\s+No|Signed|Manager|Authorized|FOB\s+Origin|Trade\s+Terms)/i;
+  const footerMatch = linesSection.match(footerRegex);
+  if (footerMatch) {
+    linesSection = linesSection.substring(0, footerMatch.index).trim();
   }
 
-  // Final fallback: Return whole text for both and let parsers do their best
-  // This allows the header parser to find keys anywhere and lines parser to find rows anywhere
-  return {
-    headerSection: text,
-    linesSection: text
-  };
+  return { headerSection, linesSection };
 }
 
 async function parsePdf(buffer) {
