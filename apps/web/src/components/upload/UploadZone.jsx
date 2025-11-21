@@ -13,9 +13,15 @@ export default function UploadZone({ onDocumentUploaded }) {
         setError(null);
 
         try {
-            const job = await api.uploadFile(file);
-            setStatus('processing');
-            pollJob(job.id);
+            const response = await api.uploadFile(file);
+
+            if (response.jobs && response.jobs.length > 0) {
+                setStatus('processing');
+                // Poll the first job
+                pollJob(response.jobs[0].id);
+            } else {
+                throw new Error('No job created');
+            }
         } catch (err) {
             setStatus('error');
             setError(err.message);

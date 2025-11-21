@@ -27,16 +27,87 @@ function parseLines(textBlock) {
     .map((line) => line.trim())
     .filter((line) => line && !/^#/.test(line));
   const lines = [];
+
   for (const row of rows) {
-    const parts = row.split('|').map((value) => value.trim());
-    if (parts.length < 7) continue;
-    const [partNumber, description, quantity, weight, value, htsCode, country] = parts;
+    // Strategy 1: Pipe separated
+    let parts = row.split('|').map((value) => value.trim());
+
+    // Strategy 2: Whitespace separated (if pipes failed)
+    if (parts.length < 2) {
+      // Split by 2 or more spaces to avoid splitting single spaces in descriptions
+      parts = row.split(/\s{2,}/).map(value => value.trim());
+    }
+
+    // If we still don't have enough parts, try to extract what we can
+    // We need at least a description or part number
+    if (parts.length < 2) continue;
+
+    // Smart Column Mapping
+    // Instead of relying on fixed positions, we'll try to identify columns by their content
+
+    let partNumber = parts[0] || '';
+    let description = parts[1] || '';
+    let quantity = 1;
+    let weight = 0;
+    let value = 0;
+    let htsCode = '';
+    let country = '';
+
+    // Helper regexes
+    const htsRegex = /\b\d{4}\.?\d{2}\.?\d{4}\b/;
+    const weightRegex = /(\d+(?:\.\d+)?)\s*(?:kg|lb|lbs)/i;
+    const valueRegex = /(?:USD|\$)\s*(\d+(?:\.\d+)?)/i;
+    const countryRegex = /\b(?:US|CN|MX|CA|DE|JP|KR|GB|IN|China|USA|Mexico|Canada|Germany|Japan)\b/i;
+
+    // First pass: Look for specific formats in the remaining parts
+    // We assume parts[0] and parts[1] are PartNo and Desc for now, but we can refine that too
+
+    for (let i = 2; i < parts.length; i++) {
+      const part = parts[i];
+
+      // Check for HTS Code
+      if (!htsCode && htsRegex.test(part)) {
+        htsCode = part.match(htsRegex)[0];
+        continue;
+      }
+
+      // Check for Country
+      if (!country && countryRegex.test(part)) {
+        country = part;
+        continue;
+      }
+
+      // Check for Weight (explicit units)
+      if (weight === 0 && weightRegex.test(part)) {
+        const match = part.match(weightRegex);
+        weight = parseFloat(match[1]);
+        // Convert lbs to kg if needed
+        if (/lb/i.test(match[0])) weight *= 0.453592;
+        continue;
+      }
+
+      // Check for Value (explicit currency)
+      if (value === 0 && valueRegex.test(part)) {
+        value = parseFloat(part.match(valueRegex)[1]);
+        continue;
+      }
+
+      // If it's just a number, it could be Qty, Weight, or Value
+      // We'll assign based on order if not already found
+      const num = parseFloat(part.replace(/[^0-9.]/g, ''));
+      if (!isNaN(num)) {
+        if (quantity === 1 && i === 2) quantity = num;
+        else if (weight === 0) weight = num;
+        else if (value === 0) value = num;
+      }
+    }
+
     lines.push({
       partNumber,
       description,
-      quantity,
-      netWeightKg: weight,
-      valueUsd: value,
+      quantity: isNaN(quantity) ? 1 : quantity,
+      netWeightKg: isNaN(weight) ? 0 : weight,
+      valueUsd: isNaN(value) ? 0 : value,
       htsCode,
       countryOfOrigin: country
     });
@@ -45,14 +116,36 @@ function parseLines(textBlock) {
 }
 
 function extractSections(text) {
+  // Try to split by explicit "Lines:" marker
   const sections = text.split(/\n\s*Lines:\s*/i);
-  if (sections.length < 2) {
-    throw new Error('PDF is missing lines section');
+
+  if (sections.length >= 2) {
+    const [headerBlock, linesBlock] = sections;
+    return {
+      headerSection: headerBlock.replace(/Header:\s*/i, '').trim(),
+      linesSection: linesBlock.trim()
+    };
   }
-  const [headerBlock, linesBlock] = sections;
-  const headerSection = headerBlock.replace(/Header:\s*/i, '').trim();
-  const linesSection = linesBlock.trim();
-  return { headerSection, linesSection };
+
+  // Fallback: If no "Lines:" marker, try to find common table headers
+  // This is a heuristic to find where the table starts
+  const tableStartRegex = /(?:Part\s*Number|Description|Qty|Quantity|Weight|Value)/i;
+  const match = text.match(tableStartRegex);
+
+  if (match) {
+    const index = match.index;
+    return {
+      headerSection: text.substring(0, index).trim(),
+      linesSection: text.substring(index).trim()
+    };
+  }
+
+  // Final fallback: Return whole text for both and let parsers do their best
+  // This allows the header parser to find keys anywhere and lines parser to find rows anywhere
+  return {
+    headerSection: text,
+    linesSection: text
+  };
 }
 
 async function parsePdf(buffer) {

@@ -49,9 +49,10 @@ const worker = new Worker('ingestion', async job => {
         const doc = {
             id: docId,
             fileName: filename,
-            canonical: result.canonical,
-            metadata: result.metadata,
-            validationErrors: result.validationErrors || [],
+            header: result.header,
+            lines: result.lines,
+            checksums: result.checksums,
+            meta: result.meta,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
