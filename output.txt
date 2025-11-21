@@ -1,26 +1,52 @@
-OCR Failed: fetch failed
 {
   "header": {
     "shipper": "Omron Robotics and Safety Technologies, Inc., 4225 Hacienda Drive",
     "consignee": "Omron Electronics Pty Ltd",
-    "incoterm": "NET 60 DAYS",
+    "incoterm": "COUNTRY OF ORIGIN:",
     "currency": "USD"
   },
   "lines": [
     {
-      "partNumber": "PARSING_CHECK",
-      "description": "Could not auto-extract lines. Please edit manually.",
-      "quantity": 1,
-      "netWeightKg": 1,
-      "valueUsd": 1,
-      "htsCode": "000000",
-      "countryOfOrigin": "US"
+      "partNumber": "3043OP006000143043OP006054SX42440500018536.50.90653709SL0A1275D",
+      "description": "3043OP006000143043OP006054SX42440500018536.50.90653709SL0A1275D",
+      "quantity": 5,
+      "netWeightKg": 0,
+      "valueUsd": 476.4,
+      "htsCode": "",
+      "countryOfOrigin": ""
+    },
+    {
+      "partNumber": "4049OP006000144049OP006034SX43415000017312.10.50003709SL0A1371H",
+      "description": "4049OP006000144049OP006034SX43415000017312.10.50003709SL0A1371H",
+      "quantity": 2,
+      "netWeightKg": 0,
+      "valueUsd": 262.26,
+      "htsCode": "",
+      "countryOfOrigin": ""
+    },
+    {
+      "partNumber": "3043OP006000143043OP006054SX42440500018536.50.90653709SL0A1275D",
+      "description": "3043OP006000143043OP006054SX42440500018536.50.90653709SL0A1275D",
+      "quantity": 5,
+      "netWeightKg": 0,
+      "valueUsd": 479.4,
+      "htsCode": "",
+      "countryOfOrigin": ""
+    },
+    {
+      "partNumber": "4049OP006000144049OP006034SX43415000017312.10.50003709SL0A1371H",
+      "description": "4049OP006000144049OP006034SX43415000017312.10.50003709SL0A1371H",
+      "quantity": 2,
+      "netWeightKg": 0,
+      "valueUsd": 264.6,
+      "htsCode": "",
+      "countryOfOrigin": ""
     }
   ],
   "checksums": {
-    "quantity": 1,
-    "netWeightKg": 1,
-    "valueUsd": 1
+    "quantity": 14,
+    "netWeightKg": 0,
+    "valueUsd": 1482.6599999999999
   },
   "meta": {
     "sourceType": "pdf",
@@ -31,13 +57,22 @@ OCR Failed: fetch failed
     "normalization": {},
     "validation": [
       {
-        "code": "HTS_UNKNOWN",
-        "severity": "warning",
-        "message": "HTS code not found in standard list",
-        "suggestion": "Verify the HTS code against the official schedule.",
+        "code": "HTS_REQUIRED",
+        "severity": "error",
+        "message": "HTS code is required",
+        "suggestion": "Please provide a valid HTS code for this item.",
         "lineIndex": 0,
         "field": "htsCode",
-        "value": "000000"
+        "value": ""
+      },
+      {
+        "code": "COO_REQUIRED",
+        "severity": "error",
+        "message": "Country of Origin is required",
+        "suggestion": "Please specify the country where this item was manufactured.",
+        "lineIndex": 0,
+        "field": "countryOfOrigin",
+        "value": ""
       },
       {
         "code": "WEIGHT_REQUIRED",
@@ -53,6 +88,108 @@ OCR Failed: fetch failed
         "message": "Value is required",
         "suggestion": "Please provide the declared value for this item.",
         "lineIndex": 0,
+        "field": "value"
+      },
+      {
+        "code": "HTS_REQUIRED",
+        "severity": "error",
+        "message": "HTS code is required",
+        "suggestion": "Please provide a valid HTS code for this item.",
+        "lineIndex": 1,
+        "field": "htsCode",
+        "value": ""
+      },
+      {
+        "code": "COO_REQUIRED",
+        "severity": "error",
+        "message": "Country of Origin is required",
+        "suggestion": "Please specify the country where this item was manufactured.",
+        "lineIndex": 1,
+        "field": "countryOfOrigin",
+        "value": ""
+      },
+      {
+        "code": "WEIGHT_REQUIRED",
+        "severity": "error",
+        "message": "Net weight is required",
+        "suggestion": "Please provide the weight for this item.",
+        "lineIndex": 1,
+        "field": "netWeight"
+      },
+      {
+        "code": "VALUE_REQUIRED",
+        "severity": "error",
+        "message": "Value is required",
+        "suggestion": "Please provide the declared value for this item.",
+        "lineIndex": 1,
+        "field": "value"
+      },
+      {
+        "code": "HTS_REQUIRED",
+        "severity": "error",
+        "message": "HTS code is required",
+        "suggestion": "Please provide a valid HTS code for this item.",
+        "lineIndex": 2,
+        "field": "htsCode",
+        "value": ""
+      },
+      {
+        "code": "COO_REQUIRED",
+        "severity": "error",
+        "message": "Country of Origin is required",
+        "suggestion": "Please specify the country where this item was manufactured.",
+        "lineIndex": 2,
+        "field": "countryOfOrigin",
+        "value": ""
+      },
+      {
+        "code": "WEIGHT_REQUIRED",
+        "severity": "error",
+        "message": "Net weight is required",
+        "suggestion": "Please provide the weight for this item.",
+        "lineIndex": 2,
+        "field": "netWeight"
+      },
+      {
+        "code": "VALUE_REQUIRED",
+        "severity": "error",
+        "message": "Value is required",
+        "suggestion": "Please provide the declared value for this item.",
+        "lineIndex": 2,
+        "field": "value"
+      },
+      {
+        "code": "HTS_REQUIRED",
+        "severity": "error",
+        "message": "HTS code is required",
+        "suggestion": "Please provide a valid HTS code for this item.",
+        "lineIndex": 3,
+        "field": "htsCode",
+        "value": ""
+      },
+      {
+        "code": "COO_REQUIRED",
+        "severity": "error",
+        "message": "Country of Origin is required",
+        "suggestion": "Please specify the country where this item was manufactured.",
+        "lineIndex": 3,
+        "field": "countryOfOrigin",
+        "value": ""
+      },
+      {
+        "code": "WEIGHT_REQUIRED",
+        "severity": "error",
+        "message": "Net weight is required",
+        "suggestion": "Please provide the weight for this item.",
+        "lineIndex": 3,
+        "field": "netWeight"
+      },
+      {
+        "code": "VALUE_REQUIRED",
+        "severity": "error",
+        "message": "Value is required",
+        "suggestion": "Please provide the declared value for this item.",
+        "lineIndex": 3,
         "field": "value"
       }
     ]
