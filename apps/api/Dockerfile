@@ -12,6 +12,9 @@ WORKDIR /app/apps/api
 
 RUN npm install --only=production
 
+# Create storage directory and set permissions
+RUN mkdir -p /app/storage && chown -R node:node /app/storage
+
 # Expose port
 EXPOSE 3001
 
