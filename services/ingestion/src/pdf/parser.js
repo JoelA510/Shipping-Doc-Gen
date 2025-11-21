@@ -16,14 +16,18 @@ function parseHeader(textBlock) {
 
   let captureMode = null;
 
-  // 1. Address & Entity Extraction (First 30 lines)
-  for (let i = 0; i < Math.min(headerLines.length, 30); i++) {
+  // 1. Address & Entity Extraction
+  for (let i = 0; i < Math.min(headerLines.length, 40); i++) {
     const line = headerLines[i];
     const lower = line.toLowerCase();
 
+    // Clean Header Line (remove FC prefix if present)
+    let cleanLine = line;
+    if (cleanLine.startsWith("FC ")) cleanLine = cleanLine.substring(3);
+
     // Shipper Heuristic
-    if (i < 5 && line.includes('Omron') && !lower.includes('sold to') && !header.shipper) {
-      header.shipper = line;
+    if (i < 8 && cleanLine.includes('Omron') && !lower.includes('sold to') && !header.shipper) {
+      header.shipper = cleanLine;
       if (headerLines[i + 1]) header.shipper += ', ' + headerLines[i + 1];
     }
 
@@ -33,14 +37,11 @@ function parseHeader(textBlock) {
       if (val) header.consignee = val;
       captureMode = 'consignee';
     } else if (captureMode === 'consignee') {
-      if (line.includes(':')) {
-        captureMode = null;
-      } else {
-        header.consignee += ', ' + line;
-      }
+      if (line.includes(':')) captureMode = null;
+      else header.consignee += ', ' + line;
     }
 
-    // 2. Key-Value Extraction
+    // Key-Value Extraction
     if (line.includes(':')) {
       const [key, ...rest] = line.split(':');
       const val = rest.join(':').trim();
@@ -73,8 +74,8 @@ function parseLines(textBlock) {
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
 
-    // 1. HTS Code Context
-    // Matches 4.2.4 or similar patterns
+    // 1. Context: HTS Code / Country
+    // Pattern: 4.2.4 digits
     const htsMatch = row.match(/\b(\d{4}\.\d{2}\.\d{4})\b/);
     if (htsMatch) {
       pendingHts = htsMatch[1];
@@ -85,92 +86,137 @@ function parseLines(textBlock) {
       continue;
     }
 
-    // 2. Data Line Matching
-    // Regex: [Desc] [Qty(int/float)] [Price(float)] [Total(float)]
-    // Improved: Handles comma in numbers, decimals in quantity, trailing spaces
-    const dataLineRegex = /^(.+?)\s+([\d,.]+)\s+([\d,.]+)\s+([\d,.]+)\s*$/;
-    const match = row.match(dataLineRegex);
+    // 2. Strategy A: Single Line Match (Strict)
+    // [Desc] [Qty] [Price] [Total]
+    const singleLineRegex = /^(.+?)\s+([\d,.]+)\s+([\d,.]+)\s+([\d,.]+)\s*$/;
+    const match = row.match(singleLineRegex);
 
     if (match) {
-      const rawPartDesc = match[1].trim();
-      const quantity = parseFloat(match[2].replace(/,/g, ''));
-      const unitPrice = parseFloat(match[3].replace(/,/g, ''));
-      const totalValue = parseFloat(match[4].replace(/,/g, ''));
-
-      // Filter out false positives (Dates, Totals)
-      if (rawPartDesc.includes('DATE:') || rawPartDesc.includes('TOTAL') || isNaN(quantity)) continue;
-
-      // Simple Part/Desc Split
-      const tokens = rawPartDesc.split(/\s+/);
-      let partNumber = tokens[0];
-      let description = rawPartDesc.substring(partNumber.length).trim();
-
-      if (!description) {
-        description = partNumber;
-        partNumber = "N/A";
+      // Sanity check: Qty must be a valid number
+      const q = parseFloat(match[2].replace(/,/g, ''));
+      if (!isNaN(q)) {
+        lines.push(formatLine(match[1], match[2], match[3], match[4], pendingHts, pendingCountry));
+        pendingHts = '';
+        continue;
       }
+    }
 
-      lines.push({
-        partNumber: partNumber,
-        description: description,
-        quantity: quantity,
-        netWeightKg: 0,
-        valueUsd: totalValue,
-        unitPrice: unitPrice,
-        htsCode: pendingHts || '',
-        countryOfOrigin: pendingCountry || ''
-      });
+    // 3. Strategy B: Multi-line Lookahead
+    // Common in PDFs: Desc on Line 1, Qty on Line 2, Price on Line 3...
+    if (i + 1 < rows.length) {
+      const nextRow = rows[i + 1];
 
-      pendingHts = ''; // Reset
+      // If next row is strictly a number (Qty)
+      if (/^\d+(\.\d+)?$/.test(nextRow)) {
+
+        // Check i+2 (Price) and i+3 (Total)
+        if (i + 3 < rows.length) {
+          const priceRow = rows[i + 2];
+          const totalRow = rows[i + 3];
+
+          // Check if Price and Total look numeric
+          if (/^[\d,.]+$/.test(priceRow) && /^[\d,.]+$/.test(totalRow)) {
+            // Found a split block!
+            lines.push(formatLine(row, nextRow, priceRow, totalRow, pendingHts, pendingCountry));
+
+            pendingHts = '';
+            i += 3; // Skip the consumed lines
+            continue;
+          }
+        }
+      }
     }
   }
 
   return lines;
 }
 
+function formatLine(rawDesc, rawQty, rawPrice, rawTotal, hts, country) {
+  const rawPartDesc = rawDesc.trim();
+  const quantity = parseFloat(rawQty.replace(/,/g, ''));
+  const unitPrice = parseFloat(rawPrice.replace(/,/g, ''));
+  const totalValue = parseFloat(rawTotal.replace(/,/g, ''));
+
+  // Split Part # from Description
+  const tokens = rawPartDesc.split(/\s+/);
+  let partNumber = tokens[0];
+  let description = rawPartDesc.substring(partNumber.length).trim();
+
+  if (!description) {
+    description = partNumber;
+    partNumber = "N/A";
+  }
+
+  return {
+    partNumber,
+    description,
+    quantity,
+    netWeightKg: 0,
+    valueUsd: totalValue,
+    unitPrice,
+    htsCode: hts || '',
+    countryOfOrigin: country || ''
+  };
+}
+
 async function parsePdf(buffer) {
   let text = '';
   const meta = { sourceType: 'pdf', raw: {} };
 
+  // 1. Local Parsing
   try {
     const result = await pdf(buffer);
     text = result.text;
     meta.raw.textLength = text.length;
     meta.raw.numpages = result.numpages;
-    // Log text snippet to debug extraction issues
-    console.log("PDF Text Snippet:", text.substring(0, 500).replace(/\n/g, ' '));
   } catch (error) {
-    // OCR Fallback
-    try {
-      if (process.env.OCR_ENABLED !== 'true') throw new Error('OCR disabled');
-      const ocrUrl = process.env.OCR_SERVICE_URL || 'http://ocr:5000';
-      const formData = new FormData();
-      const blob = new Blob([buffer], { type: 'application/pdf' });
-      formData.append('file', blob, 'document.pdf');
-      const response = await fetch(`${ocrUrl}/extract`, { method: 'POST', body: formData });
-      if (!response.ok) throw new Error(`OCR Service responded with ${response.status}`);
-      const data = await response.json();
-      text = data.text;
-      meta.raw.fallback = true;
-      meta.raw.ocr = true;
-    } catch (ocrError) {
-      error.message += ` | OCR fallback also failed: ${ocrError.message}`;
-      throw error;
-    }
+    console.error("Local Parse Failed:", error.message);
   }
 
-  const rawDoc = {
+  let rawDoc = {
     header: parseHeader(text),
     lines: parseLines(text),
     meta
   };
 
-  // SAFETY NET: Prevent "Validation Failed" if regex finds nothing
+  // 2. OCR Fallback
+  // If local regex found nothing, try the OCR service
   if (rawDoc.lines.length === 0) {
-    console.warn("Parser found 0 lines. Inserting placeholder.");
+    console.log("Local parsing found 0 lines. Attempting OCR Service...");
+    const ocrUrl = process.env.OCR_SERVICE_URL || 'http://ocr:5000';
+
+    try {
+      const formData = new FormData();
+      const blob = new Blob([buffer], { type: 'application/pdf' });
+      formData.append('file', blob, 'document.pdf');
+
+      const response = await fetch(`${ocrUrl}/extract`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.text) {
+          console.log("OCR Success. Retrying parse.");
+          text = data.text;
+          rawDoc = {
+            header: parseHeader(text),
+            lines: parseLines(text), // Retry parsing on OCR text
+            meta: { ...meta, ocrUsed: true }
+          };
+        }
+      }
+    } catch (err) {
+      console.error("OCR Service Failed:", err.message);
+    }
+  }
+
+  // 3. Safety Net
+  if (rawDoc.lines.length === 0) {
     rawDoc.lines.push({
       partNumber: "PARSING_CHECK",
-      description: "Could not auto-extract lines. Please edit manually or check OCR logs.",
+      description: "Could not auto-extract lines. Please edit manually.",
       quantity: 1,
       netWeightKg: 1,
       valueUsd: 1,
