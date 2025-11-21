@@ -20,7 +20,7 @@ const documents = new Map();
 
 // Worker processor
 const worker = new Worker('ingestion', async job => {
-    const { fileBuffer, fileName, jobId } = job.data;
+    const { storagePath, filename, jobId } = job.data;
 
     // Update local job status (simulating DB update)
     const localJob = jobs.get(jobId);
@@ -30,7 +30,7 @@ const worker = new Worker('ingestion', async job => {
     }
 
     try {
-        const ext = fileName.split('.').pop().toLowerCase();
+        const ext = filename.split('.').pop().toLowerCase();
 
         // Map mimetype/extension to ingestion types
         let type = 'pdf';
@@ -38,10 +38,9 @@ const worker = new Worker('ingestion', async job => {
         if (ext === 'csv') type = 'csv';
         if (ext === 'docx') type = 'docx';
 
-        // Convert buffer back from JSON/base64 if needed (BullMQ serializes args)
-        // But here we are passing buffer directly? BullMQ handles JSON.
-        // Buffer needs to be reconstructed from the serialized object if passed as object
-        const buffer = Buffer.from(fileBuffer.data);
+        // Read file from storage
+        const fs = require('fs').promises;
+        const buffer = await fs.readFile(storagePath);
 
         const result = await parseFile(buffer, type);
 
@@ -49,33 +48,46 @@ const worker = new Worker('ingestion', async job => {
         const docId = uuidv4();
         const doc = {
             id: docId,
-            jobId: jobId,
-            ...result,
-            history: [
-                {
-                    action: 'created',
-                    timestamp: new Date().toISOString(),
-                    user: 'system'
-                }
-            ],
-            comments: [],
-            createdAt: new Date().toISOString()
+            fileName: filename,
+            canonical: result.canonical,
+            metadata: result.metadata,
+            validationErrors: result.validationErrors || [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
         };
         documents.set(docId, doc);
 
+        // Update job with document ID
         if (localJob) {
             localJob.status = 'completed';
             localJob.documentId = docId;
             localJob.updatedAt = new Date().toISOString();
         }
 
+        // Track analytics
+        const analytics = require('../services/analytics');
+        analytics.trackEvent('document_processed', {
+            fileName: filename,
+            type,
+            documentId: docId
+        });
+
         return { documentId: docId };
     } catch (error) {
+        console.error('Processing error:', error);
         if (localJob) {
             localJob.status = 'failed';
             localJob.error = error.message;
             localJob.updatedAt = new Date().toISOString();
         }
+
+        // Track analytics
+        const analytics = require('../services/analytics');
+        analytics.trackEvent('processing_failed', {
+            fileName: filename,
+            error: error.message
+        });
+
         throw error;
     }
 }, { connection });
@@ -88,25 +100,25 @@ worker.on('failed', (job, err) => {
     console.log(`Job ${job.id} has failed with ${err.message}`);
 });
 
-async function createJob(file) {
+async function createJob(jobData) {
     const id = uuidv4();
-    const jobData = {
+    const job = {
         id,
         status: 'pending',
-        fileName: file.originalname,
+        fileName: jobData.originalname,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
     };
-    jobs.set(id, jobData);
+    jobs.set(id, job);
 
     // Add to BullMQ
     await ingestionQueue.add('parse', {
         jobId: id,
-        fileName: file.originalname,
-        fileBuffer: file.buffer // BullMQ will serialize this
+        filename: jobData.filename,
+        storagePath: jobData.storagePath
     });
 
-    return jobData;
+    return job;
 }
 
 function getJob(id) {
