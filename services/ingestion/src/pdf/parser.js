@@ -29,18 +29,36 @@ function parseLines(textBlock) {
   const lines = [];
 
   for (const row of rows) {
+    // Filter out separator lines
+    if (/^[-_=*]+$/.test(row.replace(/\s/g, ''))) continue;
+
+    // Filter out common table headers and footer noise
+    const noiseRegex = /^(?:DESCRIPTION|QUANTITY|ORIGIN|MARKS|NOS|UNIT|PRICE|TOTAL|WEIGHT|MEASUREMENT|PCSTOTAL|PAGE|INVOICE|PACKING LIST|OMRON|BANKSTOWN|AUSTRALIA|KYOTO|SHIOKOJI|TEL:|CORP NO|AEO CODE|DATE:|PAYMENT|CONSIGNED|VESSEL|SHIPPED|DISCHARGE|NOTIFY|NETGROSS)/i;
+    if (noiseRegex.test(row)) continue;
+
     // Strategy 1: Pipe separated
-    let parts = row.split('|').map((value) => value.trim());
+    let parts = row.split('|').map((value) => value.trim()).filter(Boolean);
 
     // Strategy 2: Whitespace separated (if pipes failed)
     if (parts.length < 2) {
       // Split by 2 or more spaces to avoid splitting single spaces in descriptions
-      parts = row.split(/\s{2,}/).map(value => value.trim());
+      parts = row.split(/\s{2,}/).map(value => value.trim()).filter(Boolean);
     }
 
     // If we still don't have enough parts, try to extract what we can
     // We need at least a description or part number
-    if (parts.length < 2) continue;
+    if (parts.length < 1) continue;
+
+    if (parts.length === 1) {
+      // Single part checks
+      const part = parts[0];
+      // Skip if it's just a short number or "Empty"
+      if (part === 'Empty' || part.length < 3) continue;
+      // Skip if it looks like a total or value only
+      if (/^(?:TOTAL|USD|EUR|JPY)/i.test(part)) continue;
+      // Skip if it's just a number
+      if (/^\d+$/.test(part)) continue;
+    }
 
     // Smart Column Mapping
     // Instead of relying on fixed positions, we'll try to identify columns by their content
@@ -57,7 +75,7 @@ function parseLines(textBlock) {
     const htsRegex = /\b\d{4}\.?\d{2}\.?\d{4}\b/;
     const weightRegex = /(\d+(?:\.\d+)?)\s*(?:kg|lb|lbs)/i;
     const valueRegex = /(?:USD|\$)\s*(\d+(?:\.\d+)?)/i;
-    const countryRegex = /\b(?:US|CN|MX|CA|DE|JP|KR|GB|IN|China|USA|Mexico|Canada|Germany|Japan)\b/i;
+    const countryRegex = /\b(?:US|CN|MX|CA|DE|JP|KR|GB|IN|China|USA|Mexico|Canada|Germany|Japan|UNITED KINGDOM)\b/i;
 
     // First pass: Look for specific formats in the remaining parts
     // We assume parts[0] and parts[1] are PartNo and Desc for now, but we can refine that too
@@ -101,6 +119,22 @@ function parseLines(textBlock) {
         else if (value === 0) value = num;
       }
     }
+
+    // Post-processing validation
+    // If partNumber looks like a value/weight/HTS, shift it
+    if (valueRegex.test(partNumber) && value === 0) {
+      value = parseFloat(partNumber.match(valueRegex)[1]);
+      partNumber = '';
+    }
+    if (weightRegex.test(partNumber) && weight === 0) {
+      const match = partNumber.match(weightRegex);
+      weight = parseFloat(match[1]);
+      if (/lb/i.test(match[0])) weight *= 0.453592;
+      partNumber = '';
+    }
+
+    // If we have no meaningful data, skip
+    if (!partNumber && !description && !htsCode && value === 0 && weight === 0) continue;
 
     lines.push({
       partNumber,

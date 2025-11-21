@@ -12,6 +12,19 @@ WORKDIR /app/apps/api
 
 RUN npm install --only=production
 
+# Install Chromium and dependencies for Puppeteer
+RUN apk add --no-cache \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont
+
+# Tell Puppeteer to skip installing Chrome. We'll use the installed package.
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
 # Create storage directory and set permissions
 RUN mkdir -p /app/storage && chown -R node:node /app/storage
 
