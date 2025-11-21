@@ -1,4 +1,3 @@
-```javascript
 import React, { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { UploadCloud, FileText, AlertCircle, Loader2, CheckCircle } from 'lucide-react';
@@ -68,32 +67,31 @@ export default function UploadZone({ onDocumentUploaded }) {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 className={`
-                    relative rounded - 2xl border - 2 border - dashed transition - all duration - 200 p - 12
-                    flex flex - col items - center justify - center text - center bg - white
-                    ${
-    isDragging
-        ? 'border-primary-500 bg-primary-50 scale-[1.02] shadow-lg'
-        : 'border-slate-300 hover:border-primary-400 hover:bg-slate-50'
-}
-                    ${ status === 'error' ? 'border-red-300 bg-red-50' : '' }
-`}
+                    relative rounded-2xl border-2 border-dashed transition-all duration-200 p-12
+                    flex flex-col items-center justify-center text-center bg-white
+                    ${isDragging
+                        ? 'border-primary-500 bg-primary-50 scale-[1.02] shadow-lg'
+                        : 'border-slate-300 hover:border-primary-400 hover:bg-slate-50'
+                    }
+                    ${status === 'error' ? 'border-red-300 bg-red-50' : ''}
+                `}
                 onDragOver={onDragOver}
                 onDragLeave={onDragLeave}
                 onDrop={onDrop}
             >
                 {status === 'idle' && (
                     <>
-                        <div className={`p - 4 rounded - full bg - primary - 50 mb - 6 ${ isDragging ? 'bg-primary-100' : '' } `}>
-                            <UploadCloud className={`w - 12 h - 12 text - primary - 600 ${ isDragging ? 'scale-110 duration-200' : '' } `} />
+                        <div className={`p-4 rounded-full bg-primary-50 mb-6 ${isDragging ? 'bg-primary-100' : ''}`}>
+                            <UploadCloud className={`w-12 h-12 text-primary-600 ${isDragging ? 'scale-110 duration-200' : ''}`} />
                         </div>
                         <h3 className="text-xl font-semibold text-slate-900 mb-2">
                             {isDragging ? 'Drop file to upload' : 'Drag & drop your document'}
                         </h3>
                         <p className="text-slate-500 mb-8 max-w-sm">
-                            Supports PDF, Excel (XLSX), CSV, and Word (DOCX). 
+                            Supports PDF, Excel (XLSX), CSV, and Word (DOCX).
                             We'll automatically extract the data for you.
                         </p>
-                        
+
                         <div className="relative">
                             <input
                                 type="file"
@@ -102,8 +100,8 @@ export default function UploadZone({ onDocumentUploaded }) {
                                 id="file-upload"
                                 accept=".pdf,.xlsx,.csv,.docx"
                             />
-                            <label 
-                                htmlFor="file-upload" 
+                            <label
+                                htmlFor="file-upload"
                                 className="btn-primary cursor-pointer inline-flex items-center gap-2"
                             >
                                 <FileText className="w-4 h-4" />
@@ -168,4 +166,3 @@ export default function UploadZone({ onDocumentUploaded }) {
         </div>
     );
 }
-```
