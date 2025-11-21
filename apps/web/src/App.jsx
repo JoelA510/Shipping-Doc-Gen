@@ -11,8 +11,14 @@ function App() {
     const [view, setView] = useState('upload');
     const [document, setDocument] = useState(null);
 
+    const handleLogin = (user, token) => {
+        api.setToken(token);
+        setUser(user);
+    };
+
     const handleLogout = () => {
         console.log('Logging out...');
+        api.setToken(null);
         setUser(null);
         setDocument(null);
         setView('upload');
@@ -20,15 +26,20 @@ function App() {
 
     // Placeholder for authentication logic
     useEffect(() => {
-        // Simulate user login for demonstration
-        // In a real app, check for token in localStorage
-        // setUser({ username: 'TestUser' }); 
+        // Check for existing token in localStorage
+        const token = localStorage.getItem('token');
+        if (token) {
+            api.setToken(token);
+            // In a real app, verify token and get user info
+            // For now, just set a placeholder user
+            // setUser({ username: 'User' });
+        }
     }, []);
 
     if (!user) {
         return (
             <AnimatePresence mode="wait">
-                <Login onLogin={setUser} />
+                <Login onLogin={handleLogin} />
             </AnimatePresence>
         );
     }
