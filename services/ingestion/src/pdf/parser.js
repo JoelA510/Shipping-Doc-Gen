@@ -14,56 +14,53 @@ function parseHeader(textBlock) {
     invoiceNumber: ''
   };
 
-  let captureMode = null;
-
-  // 1. Precise Field Extraction (Regex over full text)
-  // Matches "Invoice No: 123" or "Invoice Number 123"
+  // 1. Precise Field Extraction via Regex
   const invoiceMatch = textBlock.match(/(?:INVOICE\s*(?:NO|NUMBER)|K77082OD)[:\s]+([A-Z0-9]+)/i);
   if (invoiceMatch) header.id = invoiceMatch[1];
 
-  // Matches "Date: Nov 20, 2025"
   const dateMatch = textBlock.match(/DATE[:\s]+([A-Za-z]+\s+\d{1,2},?\s+\d{4})/i);
   if (dateMatch) header.invoiceDate = dateMatch[1];
 
-  // Matches "Trade Terms: FOB..." or "Incoterm: FOB..."
-  // Look for standard Incoterms (FOB, EXW, CIF, DAP, DDP, FCA, CPT, CIP, DAT, FAS, CFR)
-  const incotermMatch = textBlock.match(/(?:TERMS|INCOTERM)[^:]*[:\s]+(FOB|EXW|CIF|DAP|DDP|FCA|CPT|CIP|DAT|FAS|CFR)\b.*$/im);
+  // Improved Incoterm extraction: Stop before "COUNTRY" or "UNITED"
+  // Looks for "TERMS: FOB..." up to newline or next label
+  const incotermMatch = textBlock.match(/(?:TERMS|INCOTERM)[^:]*[:\s]+(.*?)(?=\s+(?:COUNTRY|UNITED|TOTAL)|$)/im);
   if (incotermMatch) {
-    header.incoterm = incotermMatch[0].split(':')[1].trim();
-  } else {
-    // Fallback: Grab the value after "Trade Terms:" if it doesn't match known codes
-    const genericTerms = textBlock.match(/(?:TRADE TERMS|INCOTERM)[:\s]+([^\n]+)/i);
-    if (genericTerms) header.incoterm = genericTerms[1].trim();
+    let term = incotermMatch[1].trim();
+    // Cleanup common noise if lines merged
+    term = term.replace(/[-–]\s*COLLECT.*$/i, 'COLLECT'); // Normalize "FOB Origin - Collect"
+    term = term.replace(/UNITED\s*KINGDOM/i, '');
+    header.incoterm = term.trim();
   }
 
-  // Currency Detection
+  // Currency
   if (textBlock.includes('USD') || textBlock.includes('$')) header.currency = 'USD';
   else if (textBlock.includes('EUR') || textBlock.includes('€')) header.currency = 'EUR';
 
-  // 2. Address & Entity Extraction (Iterative)
+  // 2. Address Extraction
+  let captureMode = null;
+
   for (let i = 0; i < Math.min(headerLines.length, 40); i++) {
-    const line = headerLines[i];
+    let line = headerLines[i];
     const lower = line.toLowerCase();
 
-    // Clean Header Line (remove FC prefix if present)
-    let cleanLine = line.replace(/^FC\s+/, '');
+    // Remove "FC " prefix if present (common PDF artifact)
+    line = line.replace(/^FC\s+/, '');
 
-    // Shipper Heuristic: Top lines, contains Omron, not "Sold To"
-    if (i < 8 && cleanLine.includes('Omron') && !lower.includes('sold to') && !header.shipper) {
-      header.shipper = cleanLine;
-      // Capture next line if it looks like an address
+    // Shipper
+    if (i < 8 && line.includes('Omron') && !lower.includes('sold to') && !header.shipper) {
+      header.shipper = line;
+      // Capture next line if it looks like an address (no label)
       if (headerLines[i + 1] && !headerLines[i + 1].includes(':')) {
         header.shipper += ', ' + headerLines[i + 1];
       }
     }
 
-    // Consignee Heuristic
+    // Consignee
     if (lower.startsWith('sold to:') || lower.startsWith('consigned to:')) {
-      const val = cleanLine.replace(/^(sold to|consigned to):/i, '').trim();
+      const val = line.replace(/^(sold to|consigned to):/i, '').trim();
       if (val) header.consignee = val;
       captureMode = 'consignee';
     } else if (captureMode === 'consignee') {
-      // Stop capturing if we hit a key-value pair
       if (line.includes(':')) captureMode = null;
       else header.consignee += ', ' + line;
     }
@@ -79,11 +76,12 @@ function parseLines(textBlock) {
   let pendingHts = '';
   let pendingCountry = '';
 
+  // Sliding Window Loop
+  // We check the current line, then current + next, then current + next + next2
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
 
-    // 1. Context: HTS Code / Country (Lookback)
-    // Matches 4.2.4 digits (e.g. 8536.50.9065)
+    // 1. Context Capture (HTS / Country)
     const htsMatch = row.match(/\b(\d{4}\.\d{2}\.\d{4})\b/);
     if (htsMatch) {
       pendingHts = htsMatch[1];
@@ -91,81 +89,85 @@ function parseLines(textBlock) {
         const cooMatch = row.match(/(United Kingdom|China|USA|Japan)/i);
         if (cooMatch) pendingCountry = cooMatch[0];
       }
-      continue; // Context line, not data
+      // Don't 'continue' here, as this line might ALSO contain part data
     }
 
-    // 2. Data Line Matching (Token Strategy)
-    // Instead of strict regex, find the last 3 numbers in the line.
-    // Pattern: Space + Number + Space + Number + Space + Number + (Optional Text) + End
-    // Example: "PartDesc 5 95.280 476.400" or "PartDesc 5 95.280 476.400 USD"
+    // 2. Look for Data Pattern using Windowing
+    // Pattern: ... Number ... Number ... Number ... (Qty, Price, Total)
+    // We clean commas to make regex simpler: 1,000.00 -> 1000.00
 
-    // Clean row of commas in numbers to make matching easier
-    // But keep spaces.
-    const tokenRow = row.replace(/,/g, '');
+    // Try window sizes 1, 2, 3
+    let foundMatch = false;
+    for (let w = 0; w < 3; w++) {
+      if (i + w >= rows.length) break;
 
-    // Regex: 
-    // Group 1: Qty (Int or Float)
-    // Group 2: Price (Float)
-    // Group 3: Total (Float)
-    // Trailing: Optional text (USD, PCS, etc)
-    const tokensMatch = tokenRow.match(/(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)(?:\s*[A-Za-z]+)?$/);
+      // Join lines in window
+      let combinedText = "";
+      for (let k = 0; k <= w; k++) combinedText += " " + rows[i + k];
+      combinedText = combinedText.trim();
 
-    if (tokensMatch) {
-      const qty = parseFloat(tokensMatch[1]);
-      const price = parseFloat(tokensMatch[2]);
-      const total = parseFloat(tokensMatch[3]);
+      // Clean for matching (keep spaces, remove commas in numbers)
+      const cleanText = combinedText.replace(/(\d),(\d)/g, '$1$2');
 
-      // Sanity Check: Price * Qty should be roughly Total (allow rounding diff)
-      // This filters out "Date" lines like "20 2025 10:00"
-      if (Math.abs(qty * price - total) < 1.0 || total === 0) {
-        // Valid Line found!
+      // Regex: Find last 3 numbers
+      // Group 1: Qty, Group 2: Price, Group 3: Total
+      // Matches: "Desc 5 95.28 476.40" OR "Desc 5 95.28 476.40 USD"
+      const match = cleanText.match(/([\d\.]+)\s+([\d\.]+)\s+([\d\.]+)(?:\s*[A-Za-z]+)?$/);
 
-        // Description is everything BEFORE the match
-        const matchIndex = row.indexOf(tokensMatch[1]); // Find where the numbers start
-        // Fallback if regex stripped commas and `indexOf` fails? 
-        // Using the original row length minus match length is safer?
-        // Let's simply split the original row by spaces and take tokens.
+      if (match) {
+        const qty = parseFloat(match[1]);
+        const price = parseFloat(match[2]);
+        const total = parseFloat(match[3]);
 
-        // Better: use the length of the matched part to slice the string
-        // The match object index is relative to the cleaned string, might be risky.
-        // Let's just trust the heuristic:
-        let fullDesc = row.replace(tokensMatch[0], '').trim();
+        // Validation: Math check (fuzzy for rounding)
+        // This avoids matching dates like "20 11 2025"
+        if (!isNaN(qty) && !isNaN(price) && !isNaN(total)) {
+          const calcTotal = qty * price;
+          // Check if math works out (within 1.0 margin)
+          // OR if total is clearly a large number relative to qty
+          if (Math.abs(calcTotal - total) < 2.0 || (total > 0 && qty > 0 && total / qty === price)) {
 
-        // Clean trailing commas or spaces
-        fullDesc = fullDesc.replace(/,$/, '').trim();
+            // Valid Match Found!
 
-        // Split Part # from Description
-        // Part # is usually the first token
-        const firstSpace = fullDesc.indexOf(' ');
-        let partNumber = "N/A";
-        let description = fullDesc;
+            // Extract Description: Everything before the match
+            const rawDesc = combinedText.substring(0, combinedText.indexOf(match[0])).trim();
 
-        if (firstSpace > -1) {
-          const potentialPart = fullDesc.substring(0, firstSpace);
-          // Heuristic: Part number usually contains digits or uppercase
-          if (/\d/.test(potentialPart) || potentialPart.length > 2) {
-            partNumber = potentialPart;
-            description = fullDesc.substring(firstSpace).trim();
+            // Split Part # from Description
+            // Logic: Part# is usually first token, unless it contains "Omron" or "Switch"
+            const tokens = rawDesc.split(/\s+/);
+            let partNumber = tokens[0];
+            let description = rawDesc.substring(partNumber.length).trim();
+
+            if (!description) { description = partNumber; partNumber = "N/A"; }
+
+            // Filter Summary Lines
+            if (description.toLowerCase().includes('total')) {
+              // It's a footer line
+              break;
+            }
+
+            lines.push({
+              partNumber: partNumber,
+              description: description,
+              quantity: qty,
+              netWeightKg: 0, // Derived later if available
+              valueUsd: total,
+              unitPrice: price,
+              htsCode: pendingHts || '',
+              countryOfOrigin: pendingCountry || ''
+            });
+
+            // Success: Advance index by window size
+            i += w;
+            pendingHts = '';
+            foundMatch = true;
+            break; // Stop windowing for this line
           }
         }
-
-        // Ignore "Total" summary lines
-        if (description.toLowerCase().startsWith('total')) continue;
-
-        lines.push({
-          partNumber,
-          description,
-          quantity: qty,
-          netWeightKg: 0,
-          valueUsd: total,
-          unitPrice: price,
-          htsCode: pendingHts || '',
-          countryOfOrigin: pendingCountry || ''
-        });
-
-        pendingHts = ''; // Consume context
       }
     }
+
+    if (foundMatch) continue;
   }
 
   return lines;
@@ -175,14 +177,13 @@ async function parsePdf(buffer) {
   let text = '';
   const meta = { sourceType: 'pdf', raw: {} };
 
-  // 1. Local Parsing
   try {
     const result = await pdf(buffer);
     text = result.text;
     meta.raw.textLength = text.length;
     meta.raw.numpages = result.numpages;
   } catch (error) {
-    console.error("Local Parse Failed:", error.message);
+    console.error("Local PDF Parse Failed:", error.message);
   }
 
   let rawDoc = {
@@ -191,26 +192,19 @@ async function parsePdf(buffer) {
     meta
   };
 
-  // 2. OCR Fallback
-  // If local parser found 0 lines, assume text extraction failed (e.g. scanned PDF)
+  // OCR Fallback (Strict: Only if 0 lines found locally)
   if (rawDoc.lines.length === 0) {
-    console.log("Local parsing found 0 lines. Attempting OCR Service...");
+    console.log("0 lines found. Triggering OCR...");
     const ocrUrl = process.env.OCR_SERVICE_URL || 'http://ocr:5000';
-
     try {
       const formData = new FormData();
       const blob = new Blob([buffer], { type: 'application/pdf' });
       formData.append('file', blob, 'document.pdf');
 
-      const response = await fetch(`${ocrUrl}/extract`, {
-        method: 'POST',
-        body: formData
-      });
-
+      const response = await fetch(`${ocrUrl}/extract`, { method: 'POST', body: formData });
       if (response.ok) {
         const data = await response.json();
         if (data.text) {
-          console.log("OCR Success. Retrying parse with OCR text.");
           text = data.text;
           rawDoc = {
             header: parseHeader(text),
@@ -218,15 +212,13 @@ async function parsePdf(buffer) {
             meta: { ...meta, ocrUsed: true }
           };
         }
-      } else {
-        console.warn("OCR Service responded with:", response.status);
       }
-    } catch (err) {
-      console.error("OCR Service Failed:", err.message);
+    } catch (e) {
+      console.error("OCR Failed:", e.message);
     }
   }
 
-  // 3. Safety Net (Prevent UI Validation Blockers)
+  // Safety Net
   if (rawDoc.lines.length === 0) {
     rawDoc.lines.push({
       partNumber: "PARSING_CHECK",
