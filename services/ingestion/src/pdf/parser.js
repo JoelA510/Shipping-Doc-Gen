@@ -6,19 +6,60 @@ function parseHeader(textBlock) {
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean);
-  const header = {};
-  for (const line of headerLines) {
-    const [key, ...rest] = line.split(':');
-    if (!key || rest.length === 0) continue;
-    header[key.trim().toLowerCase()] = rest.join(':').trim();
-  }
-  return {
-    shipper: header.shipper || '',
-    consignee: header.consignee || '',
-    incoterm: header.incoterm || '',
-    currency: header.currency || '',
-    reference: header.reference
+
+  const header = {
+    shipper: '',
+    consignee: '',
+    incoterm: '',
+    currency: '',
+    reference: undefined,
+    invoiceDate: '',
+    invoiceNumber: ''
   };
+
+  // State to capture multi-line addresses
+  let captureMode = null; // 'shipper' | 'consignee'
+
+  for (let i = 0; i < headerLines.length; i++) {
+    const line = headerLines[i];
+    const lowerLine = line.toLowerCase();
+
+    // 1. Key-Value extraction (Right side of header usually)
+    if (line.includes(':')) {
+      const [key, ...rest] = line.split(':');
+      const val = rest.join(':').trim();
+      const cleanKey = key.trim().toLowerCase();
+
+      if (cleanKey.includes('invoice number') || cleanKey === 'invoice no') header.id = val;
+      if (cleanKey === 'date') header.invoiceDate = val;
+      if (cleanKey.includes('payment terms')) header.paymentTerms = val;
+      if (cleanKey.includes('incoterm') || cleanKey.includes('trade terms')) header.incoterm = val;
+
+      // Reset capture mode if we hit a specific key
+      captureMode = null;
+    }
+
+    // 2. Address Block extraction
+    if (lowerLine.startsWith('sold to:') || lowerLine.startsWith('shipper:')) {
+      header.consignee = line.replace(/sold to:/i, '').trim();
+      captureMode = 'consignee';
+    } else if (lowerLine.startsWith('consigned to:')) {
+      header.consignee = line.replace(/consigned to:/i, '').trim();
+      captureMode = 'consignee';
+    } else if (lowerLine.startsWith('omron') && !header.shipper) {
+      header.shipper = line;
+      captureMode = 'shipper';
+    } else if (captureMode && !line.includes(':')) {
+      if (captureMode === 'consignee') header.consignee += `, ${line}`;
+      if (captureMode === 'shipper') header.shipper += `, ${line}`;
+    }
+  }
+
+  // Default Currency detection
+  if (textBlock.includes('USD') || textBlock.includes('$')) header.currency = 'USD';
+  else if (textBlock.includes('EUR') || textBlock.includes('€')) header.currency = 'EUR';
+
+  return header;
 }
 
 function parseLines(textBlock) {
@@ -26,42 +67,120 @@ function parseLines(textBlock) {
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line && !/^#/.test(line));
-  const lines = [];
+
+  // Expanded Noise Regex (Shared)
+  const noiseRegex = /^(?:DESCRIPTION|QUANTITY|ORIGIN|MARKS|NOS|UNIT|PRICE|TOTAL|WEIGHT|MEASUREMENT|PCSTOTAL|PAGE|INVOICE|PACKING LIST|OMRON|BANKSTOWN|AUSTRALIA|KYOTO|SHIOKOJI|TEL:|CORP NO|AEO CODE|DATE:|PAYMENT|CONSIGNED|VESSEL|SHIPPED|DISCHARGE|NOTIFY|NETGROSS|FOB|TERMS|SHIPPER|SOLD TO|P\/O NUMBER|VOYAGE|PORT|DETAILS AS PER|ELECTRICAL PARTS|SWITCH|ROPES|CARTONS ONLY|COUNTRY OF ORIGIN)/i;
+
+  // --- STRATEGY 1: OMRON STRICT PATTERN ---
+  const omronLines = [];
+  let pendingHts = '';
+  let pendingCountry = '';
 
   for (const row of rows) {
-    // Filter out separator lines
+    // Noise Filter
     if (/^[-_=*]+$/.test(row.replace(/\s/g, ''))) continue;
+    if (noiseRegex.test(row)) {
+      // Capture Context (HTS/Country)
+      const htsMatch = row.match(/\b\d{4}\.\d{2}\.\d{4}\b/);
+      if (htsMatch) pendingHts = htsMatch[0];
 
-    // Filter out common table headers and footer noise
-    const noiseRegex = /^(?:DESCRIPTION|QUANTITY|ORIGIN|MARKS|NOS|UNIT|PRICE|TOTAL|WEIGHT|MEASUREMENT|PCSTOTAL|PAGE|INVOICE|PACKING LIST|OMRON|BANKSTOWN|AUSTRALIA|KYOTO|SHIOKOJI|TEL:|CORP NO|AEO CODE|DATE:|PAYMENT|CONSIGNED|VESSEL|SHIPPED|DISCHARGE|NOTIFY|NETGROSS|FOB|TERMS|SHIPPER|SOLD TO|P\/O NUMBER|VOYAGE|PORT|DETAILS AS PER)/i;
+      if (/United Kingdom|China|USA|Japan/i.test(row)) {
+        const cooMatch = row.match(/(United Kingdom|China|USA|Japan)/i);
+        if (cooMatch) pendingCountry = cooMatch[0];
+      }
+      continue;
+    }
+
+    // Omron Regex (Relaxed)
+    // (Start) (Anything for Part/Desc) (Space) (Int/Float) (Space) (Float) (Space) (Float) (End)
+    const omronLineRegex = /^(.+?)\s+(\d+(?:\.\d+)?)\s+([\d,.]+)\s+([\d,.]+)\s*$/;
+    let match = row.match(omronLineRegex);
+
+    // Fallback Heuristic (Ends with 3 numbers)
+    if (!match) {
+      const tokens = row.split(/\s+/);
+      if (tokens.length >= 4) {
+        const last3 = tokens.slice(-3);
+        const isNum = (s) => !isNaN(parseFloat(s.replace(/,/g, '')));
+        if (last3.every(isNum)) {
+          match = [row, tokens.slice(0, -3).join(' '), last3[0], last3[1], last3[2]];
+        }
+      }
+    }
+
+    if (match) {
+      const rawPartDesc = match[1];
+      const quantity = parseFloat(match[2].replace(/,/g, ''));
+      const unitPrice = parseFloat(match[3].replace(/,/g, ''));
+      const totalValue = parseFloat(match[4].replace(/,/g, ''));
+
+      const descParts = rawPartDesc.split(/\s+/);
+
+      // Heuristic: The longest segment with numbers and letters is likely the Part Number
+      let partNumber = descParts[0];
+      let description = rawPartDesc;
+
+      const bestPartToken = descParts.find(p => (/\d/.test(p) && /[a-zA-Z]/.test(p)) || (p.includes('-') && /\d/.test(p)));
+      if (bestPartToken && bestPartToken.length > 3) {
+        partNumber = bestPartToken;
+        description = rawPartDesc.replace(partNumber, '').trim();
+      }
+
+      omronLines.push({
+        partNumber: partNumber,
+        description: description || 'Part',
+        quantity: quantity,
+        netWeightKg: 0,
+        valueUsd: totalValue,
+        unitPrice: unitPrice,
+        htsCode: pendingHts,
+        countryOfOrigin: pendingCountry || ''
+      });
+
+      pendingHts = '';
+      continue;
+    } else {
+      // Check for isolated HTS to update pendingHts
+      const htsMatch = row.match(/\b\d{4}\.\d{2}\.\d{4}\b/);
+      if (htsMatch) pendingHts = htsMatch[0];
+    }
+  }
+
+  if (omronLines.length > 0) return omronLines;
+
+  // --- STRATEGY 2: GENERIC FALLBACK ---
+  console.log("Omron parsing yielded 0 lines. Falling back to generic parsing.");
+  const genericLines = [];
+
+  for (const row of rows) {
+    if (/^[-_=*]+$/.test(row.replace(/\s/g, ''))) continue;
     if (noiseRegex.test(row)) continue;
 
     // Strategy 1: Pipe separated
     let parts = row.split('|').map((value) => value.trim()).filter(Boolean);
 
-    // Strategy 2: Whitespace separated (if pipes failed)
+    // Strategy 2: Whitespace separated
     if (parts.length < 2) {
-      // Split by 2 or more spaces to avoid splitting single spaces in descriptions
       parts = row.split(/\s{2,}/).map(value => value.trim()).filter(Boolean);
     }
 
-    // If we still don't have enough parts, try to extract what we can
-    // We need at least a description or part number
     if (parts.length < 1) continue;
 
-    if (parts.length === 1) {
-      // Single part checks
-      const part = parts[0];
-      // Skip if it's just a short number or "Empty"
-      if (part === 'Empty' || part.length < 3) continue;
-      // Skip if it looks like a total or value only
-      if (/^(?:TOTAL|USD|EUR|JPY)/i.test(part)) continue;
-      // Skip if it's just a number
-      if (/^\d+$/.test(part)) continue;
+    // Fallback split for single long string
+    if (parts.length === 1 && parts[0].length > 10 && parts[0].includes(' ')) {
+      const firstSpace = parts[0].indexOf(' ');
+      const potentialPartNo = parts[0].substring(0, firstSpace);
+      if (/^[\w\d-]+$/.test(potentialPartNo) && potentialPartNo.length > 3) {
+        parts = [potentialPartNo, parts[0].substring(firstSpace).trim()];
+      }
     }
 
-    // Smart Column Mapping
-    // Instead of relying on fixed positions, we'll try to identify columns by their content
+    if (parts.length === 1) {
+      const part = parts[0];
+      if (part === 'Empty' || part.length < 3) continue;
+      if (/^(?:TOTAL|USD|EUR|JPY)/i.test(part)) continue;
+      if (/^\d+$/.test(part)) continue;
+    }
 
     let partNumber = parts[0] || '';
     let description = parts[1] || '';
@@ -74,44 +193,30 @@ function parseLines(textBlock) {
     // Helper regexes
     const htsRegex = /\b\d{4}\.?\d{2}\.?\d{4}\b/;
     const weightRegex = /(\d+(?:\.\d+)?)\s*(?:kg|lb|lbs)/i;
-    const valueRegex = /(?:USD|\$)\s*(\d+(?:\.\d+)?)/i;
+    const valueRegex = /(?:USD|\$)\s*(\d+(?:\.\d+)?)|(\d+(?:\.\d+)?)\s*USD/i;
     const countryRegex = /\b(?:US|CN|MX|CA|DE|JP|KR|GB|IN|China|USA|Mexico|Canada|Germany|Japan|UNITED KINGDOM)\b/i;
-
-    // First pass: Look for specific formats in the remaining parts
-    // We assume parts[0] and parts[1] are PartNo and Desc for now, but we can refine that too
 
     for (let i = 2; i < parts.length; i++) {
       const part = parts[i];
-
-      // Check for HTS Code
       if (!htsCode && htsRegex.test(part)) {
         htsCode = part.match(htsRegex)[0];
         continue;
       }
-
-      // Check for Country
       if (!country && countryRegex.test(part)) {
         country = part;
         continue;
       }
-
-      // Check for Weight (explicit units)
       if (weight === 0 && weightRegex.test(part)) {
         const match = part.match(weightRegex);
         weight = parseFloat(match[1]);
-        // Convert lbs to kg if needed
         if (/lb/i.test(match[0])) weight *= 0.453592;
         continue;
       }
-
-      // Check for Value (explicit currency)
       if (value === 0 && valueRegex.test(part)) {
-        value = parseFloat(part.match(valueRegex)[1]);
+        const match = part.match(valueRegex);
+        value = parseFloat(match[1] || match[2]);
         continue;
       }
-
-      // If it's just a number, it could be Qty, Weight, or Value
-      // We'll assign based on order if not already found
       const num = parseFloat(part.replace(/[^0-9.]/g, ''));
       if (!isNaN(num)) {
         if (quantity === 1 && i === 2) quantity = num;
@@ -120,10 +225,10 @@ function parseLines(textBlock) {
       }
     }
 
-    // Post-processing validation
-    // If partNumber looks like a value/weight/HTS, shift it
+    // Post-processing
     if (valueRegex.test(partNumber) && value === 0) {
-      value = parseFloat(partNumber.match(valueRegex)[1]);
+      const match = partNumber.match(valueRegex);
+      value = parseFloat(match[1] || match[2]);
       partNumber = '';
     }
     if (weightRegex.test(partNumber) && weight === 0) {
@@ -133,25 +238,22 @@ function parseLines(textBlock) {
       partNumber = '';
     }
 
-    // STRICTER VALIDATION:
-    // 1. If we only have a part number, it must look like a part number (no spaces, or specific format)
-    //    If it's a long sentence, it's garbage.
+    // STRICT VALIDATION
     if (partNumber && !description && !htsCode && value === 0 && weight === 0) {
-      if (partNumber.includes(' ') && partNumber.length > 20) continue; // Likely a footer sentence
-      if (partNumber.length < 3) continue; // Too short
-      // If it's just digits, it might be a quantity or line number floating around
+      if (partNumber.includes(' ') && partNumber.length > 20) continue;
+      if (partNumber.length < 3) continue;
       if (/^\d+$/.test(partNumber)) continue;
     }
-
-    // 2. If we have a description, it shouldn't be just a number or "Empty"
     if (description && (description === 'Empty' || /^\d+$/.test(description))) {
       description = '';
     }
+    if (!partNumber && !description) continue;
 
-    // 3. Must have at least one meaningful field besides just quantity
-    if (!partNumber && !description && !htsCode && value === 0 && weight === 0) continue;
+    const hasData = (value > 0 || weight > 0 || htsCode || country || quantity > 1);
+    const isCompleteIdentity = (partNumber && description);
+    if (!hasData && !isCompleteIdentity) continue;
 
-    lines.push({
+    genericLines.push({
       partNumber,
       description,
       quantity: isNaN(quantity) ? 1 : quantity,
@@ -161,41 +263,30 @@ function parseLines(textBlock) {
       countryOfOrigin: country
     });
   }
-  return lines;
+  return genericLines;
 }
 
 function extractSections(text) {
-  // Try to split by explicit "Lines:" marker
   const sections = text.split(/\n\s*Lines:\s*/i);
-
-  let headerSection = text;
-  let linesSection = text;
-
   if (sections.length >= 2) {
     const [headerBlock, linesBlock] = sections;
-    headerSection = headerBlock.replace(/Header:\s*/i, '').trim();
-    linesSection = linesBlock.trim();
-  } else {
-    // Fallback: If no "Lines:" marker, try to find common table headers
-    const tableStartRegex = /(?:Part\s*Number|Description|Qty|Quantity|Weight|Value)/i;
-    const match = text.match(tableStartRegex);
-
-    if (match) {
-      const index = match.index;
-      headerSection = text.substring(0, index).trim();
-      linesSection = text.substring(index).trim();
-    }
+    return {
+      headerSection: headerBlock.replace(/Header:\s*/i, '').trim(),
+      linesSection: linesBlock.trim()
+    };
   }
 
-  // IMPROVEMENT: Cut off the lines section at the footer/totals
-  // Look for common footer markers that appear AFTER the table
-  const footerRegex = /\n\s*(?:Total|Subtotal|Page\s+\d|Invoice\s+No|Signed|Manager|Authorized|FOB\s+Origin|Trade\s+Terms)/i;
-  const footerMatch = linesSection.match(footerRegex);
-  if (footerMatch) {
-    linesSection = linesSection.substring(0, footerMatch.index).trim();
+  const tableStartRegex = /(?:Part\s*Number|Description|Qty|Quantity|Weight|Value)/i;
+  const match = text.match(tableStartRegex);
+  if (match) {
+    const index = match.index;
+    return {
+      headerSection: text.substring(0, index).trim(),
+      linesSection: text.substring(index).trim()
+    };
   }
 
-  return { headerSection, linesSection };
+  return { headerSection: text, linesSection: text };
 }
 
 async function parsePdf(buffer) {
@@ -204,57 +295,29 @@ async function parsePdf(buffer) {
     sourceType: 'pdf',
     raw: {}
   };
+
   try {
-    try {
-      const result = await pdf(buffer);
-      text = result.text;
-      meta.raw.textLength = text.length;
-      meta.raw.details = result.info || {};
-    } catch (parseError) {
-      // Fallback to OCR extraction for scanned PDFs
-      try {
-        // Check if OCR is enabled
-        if (process.env.OCR_ENABLED !== 'true') {
-          throw new Error('OCR disabled');
-        }
-
-        // Check if OCR service is available (via env or default)
-        const ocrUrl = process.env.OCR_SERVICE_URL || 'http://ocr:5000';
-
-        // Create form data for upload
-        const formData = new FormData();
-        const blob = new Blob([buffer], { type: 'application/pdf' });
-        formData.append('file', blob, 'document.pdf');
-
-        const response = await fetch(`${ocrUrl}/extract`, {
-          method: 'POST',
-          body: formData
-        });
-
-        if (!response.ok) {
-          throw new Error(`OCR Service responded with ${response.status}`);
-        }
-
-        const data = await response.json();
-        text = data.text;
-
-        meta.raw.fallback = true;
-        meta.raw.ocr = true;
-      } catch (ocrError) {
-        // If OCR also fails, rethrow original parse error with additional context
-        parseError.message += ` | OCR fallback also failed: ${ocrError.message}`;
-        throw parseError;
-      }
-    }
+    const result = await pdf(buffer);
+    text = result.text;
+    meta.raw.textLength = text.length;
+    meta.raw.numpages = result.numpages;
   } catch (error) {
-    const fallbackText = buffer.toString('utf8');
-    if (/^%PDF/.test(fallbackText)) {
-      error.code = 'PDF_PARSE_FAILED';
+    try {
+      if (process.env.OCR_ENABLED !== 'true') throw new Error('OCR disabled');
+      const ocrUrl = process.env.OCR_SERVICE_URL || 'http://ocr:5000';
+      const formData = new FormData();
+      const blob = new Blob([buffer], { type: 'application/pdf' });
+      formData.append('file', blob, 'document.pdf');
+      const response = await fetch(`${ocrUrl}/extract`, { method: 'POST', body: formData });
+      if (!response.ok) throw new Error(`OCR Service responded with ${response.status}`);
+      const data = await response.json();
+      text = data.text;
+      meta.raw.fallback = true;
+      meta.raw.ocr = true;
+    } catch (ocrError) {
+      error.message += ` | OCR fallback also failed: ${ocrError.message}`;
       throw error;
     }
-    text = fallbackText;
-    meta.raw.fallback = true;
-    meta.raw.error = error.message;
   }
 
   const { headerSection, linesSection } = extractSections(text);
