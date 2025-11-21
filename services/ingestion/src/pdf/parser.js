@@ -15,13 +15,17 @@ function parseHeader(textBlock) {
   };
 
   // 1. Regex Extraction
+  // Invoice
   const invoiceMatch = textBlock.match(/(?:INVOICE\s*(?:NO|NUMBER)|K77082OD)[:\s]+([A-Z0-9]+)/i);
   if (invoiceMatch) header.id = invoiceMatch[1];
 
+  // Date
   const dateMatch = textBlock.match(/DATE[:\s]+([A-Za-z]+\s+\d{1,2},?\s+\d{4})/i);
   if (dateMatch) header.invoiceDate = dateMatch[1];
 
-  const incotermMatch = textBlock.match(/(?:TERMS|INCOTERM)[^:]*[:\s]+(.*?)(?=\s+(?:COUNTRY|UNITED|TOTAL)|$)/im);
+  // Incoterm - Explicitly exclude "PAYMENT TERMS" to avoid capture
+  // Looks for "TERMS:" or "INCOTERM" that is NOT Payment Terms
+  const incotermMatch = textBlock.match(/(?:(?<!PAYMENT\s)TERMS|INCOTERM)[^:]*[:\s]+(.*?)(?=\s+(?:COUNTRY|UNITED|TOTAL)|$)/im);
   if (incotermMatch) {
     let term = incotermMatch[1].trim();
     term = term.replace(/[-–]\s*COLLECT.*$/i, 'COLLECT');
@@ -29,6 +33,7 @@ function parseHeader(textBlock) {
     header.incoterm = term.trim();
   }
 
+  // Currency
   if (textBlock.includes('USD') || textBlock.includes('$')) header.currency = 'USD';
   else if (textBlock.includes('EUR') || textBlock.includes('€')) header.currency = 'EUR';
 
@@ -37,7 +42,7 @@ function parseHeader(textBlock) {
   for (let i = 0; i < Math.min(headerLines.length, 40); i++) {
     let line = headerLines[i];
     const lower = line.toLowerCase();
-    line = line.replace(/^FC\s+/, '');
+    line = line.replace(/^FC\s+/, ''); // Clean prefix
 
     if (i < 8 && line.includes('Omron') && !lower.includes('sold to') && !header.shipper) {
       header.shipper = line;
@@ -66,10 +71,12 @@ function parseLines(textBlock) {
   let pendingHts = '';
   let pendingCountry = '';
 
-  // Regex to find the "Total Price Qty" cluster inside smashed text
-  // Looks for: 123.456 (Total) 12.345 (Price) 123 (Qty)
-  // The decimals are usually 3 digits in this specific PDF output
+  // Regex for Smashed Rows: (Total) (Price) (QtyAndGarbage)
+  // We capture the start of the 3rd number block and figure out where Qty ends mathematically
   const smashedMathRegex = /(\d+\.\d{3})(\d+\.\d{3})(\d+)/g;
+
+  // Regex for Clean Rows: (Qty) (Price) (Total)
+  const cleanRegex = /([\d\.]+)\s+([\d\.]+)\s+([\d\.]+)(?:\s*[A-Za-z]+)?$/;
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
@@ -84,65 +91,101 @@ function parseLines(textBlock) {
       }
     }
 
-    // 2. Smashed Line Detection
-    // We check windows because the "Part Number" might be on the previous line 
-    // merged with the "Total/Price/Qty" block
     let foundMatch = false;
 
+    // 2. Try Smashed Match (Sliding Window)
     for (let w = 0; w < 4; w++) {
       if (i + w >= rows.length) break;
 
-      // Join lines without spaces to detect smashed sequences
       let combinedText = "";
       for (let k = 0; k <= w; k++) combinedText += rows[i + k];
 
-      // Reset regex state
       smashedMathRegex.lastIndex = 0;
       let match;
 
-      // Iterate all potential matches in the line
       while ((match = smashedMathRegex.exec(combinedText)) !== null) {
         const total = parseFloat(match[1]);
         const price = parseFloat(match[2]);
-        const qty = parseInt(match[3], 10);
+        const rawQtyString = match[3]; // e.g. "544506" (Qty 5 + Ref 44506)
 
-        // Math Check: Price * Qty == Total
-        if (Math.abs(price * qty - total) < 1.0) {
+        // Iterative check to separate Qty from trailing garbage
+        for (let len = 1; len <= rawQtyString.length; len++) {
+          const qtyCandidate = parseInt(rawQtyString.substring(0, len), 10);
+          if (isNaN(qtyCandidate)) continue;
 
-          // MATCH FOUND
-          // Everything BEFORE the match is the Part Number / Description
-          const beforeMatch = combinedText.substring(0, match.index);
+          // Math Check: Price * Qty == Total (Approx)
+          if (Math.abs(price * qtyCandidate - total) < 1.0) {
 
-          // Heuristic to clean up Part Number
-          // 1. Remove "3709" prefix (Line Item Index)
-          // 2. Remove trailing noise
-          let cleanPart = beforeMatch.replace(/^\d{3,4}/, '').trim();
+            // Found Valid Line
+            const beforeMatch = combinedText.substring(0, match.index);
+            let cleanPart = beforeMatch.replace(/^\d{3,4}/, '').trim(); // Remove line index
+            cleanPart = cleanPart.replace(/United\s*Kingdom/gi, '').trim();
+            cleanPart = cleanPart.replace(/USD|PCS/g, '').trim();
+            if (!cleanPart) cleanPart = "Unidentified Part";
 
-          // Further cleanup: If it contains "United Kingdom", remove it
-          cleanPart = cleanPart.replace(/United\s*Kingdom/gi, '').trim();
-          cleanPart = cleanPart.replace(/USD|PCS/g, '').trim();
+            lines.push({
+              partNumber: cleanPart,
+              description: cleanPart, // Desc merged in smash
+              quantity: qtyCandidate,
+              netWeightKg: 0,
+              valueUsd: total,
+              unitPrice: price,
+              htsCode: pendingHts || '',
+              countryOfOrigin: pendingCountry || ''
+            });
 
-          // If empty, fallback
-          if (!cleanPart) cleanPart = "Unidentified Part";
-
-          lines.push({
-            partNumber: cleanPart, // In smashed text, Part/Desc are merged
-            description: cleanPart,
-            quantity: qty,
-            netWeightKg: 0,
-            valueUsd: total,
-            unitPrice: price,
-            htsCode: pendingHts || '',
-            countryOfOrigin: pendingCountry || ''
-          });
-
-          pendingHts = '';
-          foundMatch = true;
-          i += w; // Advance loop
-          break; // Stop checking matches in this window
+            pendingHts = '';
+            foundMatch = true;
+            i += w;
+            break;
+          }
         }
+        if (foundMatch) break;
       }
       if (foundMatch) break;
+    }
+    if (foundMatch) continue;
+
+    // 3. Try Clean Match (Fallback for spaced lines)
+    for (let w = 0; w < 3; w++) {
+      if (i + w >= rows.length) break;
+      let combinedText = "";
+      for (let k = 0; k <= w; k++) combinedText += " " + rows[i + k];
+      combinedText = combinedText.trim().replace(/(\d),(\d)/g, '$1$2');
+
+      const match = combinedText.match(cleanRegex);
+      if (match) {
+        const qty = parseFloat(match[1]);
+        const price = parseFloat(match[2]);
+        const total = parseFloat(match[3]);
+
+        if (!isNaN(qty) && !isNaN(price) && !isNaN(total)) {
+          if (Math.abs(qty * price - total) < 2.0) {
+            const rawDesc = combinedText.substring(0, combinedText.indexOf(match[0])).trim();
+            const tokens = rawDesc.split(/\s+/);
+            let partNumber = tokens[0];
+            let description = rawDesc.substring(partNumber.length).trim();
+            if (!description) { description = partNumber; partNumber = "N/A"; }
+
+            if (description.toLowerCase().includes('total')) break;
+
+            lines.push({
+              partNumber,
+              description,
+              quantity: qty,
+              netWeightKg: 0,
+              valueUsd: total,
+              unitPrice: price,
+              htsCode: pendingHts || '',
+              countryOfOrigin: pendingCountry || ''
+            });
+            pendingHts = '';
+            foundMatch = true;
+            i += w;
+            break;
+          }
+        }
+      }
     }
   }
 
@@ -183,17 +226,16 @@ async function parsePdf(buffer) {
           text = data.text;
           rawDoc = {
             header: parseHeader(text),
-            lines: parseLines(text), // Retry parsing on OCR text
+            lines: parseLines(text),
             meta: { ...meta, ocrUsed: true }
           };
         }
       }
     } catch (e) {
-      console.error("OCR Failed:", e.message);
+      // Silent catch or log if OCR is optional/not expected locally
     }
   }
 
-  // Safety Net
   if (rawDoc.lines.length === 0) {
     rawDoc.lines.push({
       partNumber: "PARSING_CHECK",

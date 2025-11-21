@@ -1,0 +1,60 @@
+OCR Failed: fetch failed
+{
+  "header": {
+    "shipper": "Omron Robotics and Safety Technologies, Inc., 4225 Hacienda Drive",
+    "consignee": "Omron Electronics Pty Ltd",
+    "incoterm": "NET 60 DAYS",
+    "currency": "USD"
+  },
+  "lines": [
+    {
+      "partNumber": "PARSING_CHECK",
+      "description": "Could not auto-extract lines. Please edit manually.",
+      "quantity": 1,
+      "netWeightKg": 1,
+      "valueUsd": 1,
+      "htsCode": "000000",
+      "countryOfOrigin": "US"
+    }
+  ],
+  "checksums": {
+    "quantity": 1,
+    "netWeightKg": 1,
+    "valueUsd": 1
+  },
+  "meta": {
+    "sourceType": "pdf",
+    "raw": {
+      "textLength": 15120,
+      "numpages": 8
+    },
+    "normalization": {},
+    "validation": [
+      {
+        "code": "HTS_UNKNOWN",
+        "severity": "warning",
+        "message": "HTS code not found in standard list",
+        "suggestion": "Verify the HTS code against the official schedule.",
+        "lineIndex": 0,
+        "field": "htsCode",
+        "value": "000000"
+      },
+      {
+        "code": "WEIGHT_REQUIRED",
+        "severity": "error",
+        "message": "Net weight is required",
+        "suggestion": "Please provide the weight for this item.",
+        "lineIndex": 0,
+        "field": "netWeight"
+      },
+      {
+        "code": "VALUE_REQUIRED",
+        "severity": "error",
+        "message": "Value is required",
+        "suggestion": "Please provide the declared value for this item.",
+        "lineIndex": 0,
+        "field": "value"
+      }
+    ]
+  }
+}
