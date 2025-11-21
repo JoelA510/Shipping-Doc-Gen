@@ -2,10 +2,19 @@ const pdf = require('pdf-parse');
 const { normalizeDocument } = require('../utils');
 
 function parseHeader(textBlock) {
-  // Same robust header logic as before
   const headerLines = textBlock.split('\n').map(l => l.trim()).filter(Boolean);
-  const header = { shipper: '', consignee: '', incoterm: '', currency: '', reference: undefined, invoiceDate: '', invoiceNumber: '' };
 
+  const header = {
+    shipper: '',
+    consignee: '',
+    incoterm: '',
+    currency: '',
+    reference: undefined,
+    invoiceDate: '',
+    invoiceNumber: ''
+  };
+
+  // 1. Regex Extraction
   const invoiceMatch = textBlock.match(/(?:INVOICE\s*(?:NO|NUMBER)|K77082OD)[:\s]+([A-Z0-9]+)/i);
   if (invoiceMatch) header.id = invoiceMatch[1];
 
@@ -23,6 +32,7 @@ function parseHeader(textBlock) {
   if (textBlock.includes('USD') || textBlock.includes('$')) header.currency = 'USD';
   else if (textBlock.includes('EUR') || textBlock.includes('€')) header.currency = 'EUR';
 
+  // 2. Address Extraction
   let captureMode = null;
   for (let i = 0; i < Math.min(headerLines.length, 40); i++) {
     let line = headerLines[i];
@@ -31,8 +41,11 @@ function parseHeader(textBlock) {
 
     if (i < 8 && line.includes('Omron') && !lower.includes('sold to') && !header.shipper) {
       header.shipper = line;
-      if (headerLines[i + 1] && !headerLines[i + 1].includes(':')) header.shipper += ', ' + headerLines[i + 1];
+      if (headerLines[i + 1] && !headerLines[i + 1].includes(':')) {
+        header.shipper += ', ' + headerLines[i + 1];
+      }
     }
+
     if (lower.startsWith('sold to:') || lower.startsWith('consigned to:')) {
       const val = line.replace(/^(sold to|consigned to):/i, '').trim();
       if (val) header.consignee = val;
@@ -42,27 +55,26 @@ function parseHeader(textBlock) {
       else header.consignee += ', ' + line;
     }
   }
+
   return header;
 }
 
 function parseLines(textBlock) {
   const rows = textBlock.split('\n').map(l => l.trim()).filter(l => l && !/^#/.test(l));
   const lines = [];
+
   let pendingHts = '';
   let pendingCountry = '';
 
-  // Regex for "Smashed" Rows (Omron PDF quirk)
-  // Matches: PartNumber ending in char/digit, followed immediately by Total(float), Price(float), Qty(int)
-  // Example: SL0A1275D476.40095.2805 -> Part:SL0A1275D Total:476.400 Price:95.280 Qty:5
-  const smashedRegex = /([A-Z0-9\-]+)(\d+\.\d{3})(\d+\.\d{3})(\d+)$/;
-
-  // Regex for "Clean" Rows (Standard space-separated)
-  const cleanRegex = /([\d\.]+)\s+([\d\.]+)\s+([\d\.]+)(?:\s*[A-Za-z]+)?$/;
+  // Regex to find the "Total Price Qty" cluster inside smashed text
+  // Looks for: 123.456 (Total) 12.345 (Price) 123 (Qty)
+  // The decimals are usually 3 digits in this specific PDF output
+  const smashedMathRegex = /(\d+\.\d{3})(\d+\.\d{3})(\d+)/g;
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
 
-    // 1. Context Capture
+    // 1. Context (HTS/Country)
     const htsMatch = row.match(/\b(\d{4}\.\d{2}\.\d{4})\b/);
     if (htsMatch) {
       pendingHts = htsMatch[1];
@@ -72,28 +84,50 @@ function parseLines(textBlock) {
       }
     }
 
-    // 2. Try Smashed Match (Priority for this bad PDF)
-    // We scan the windows because the smashed content might be on the same line or joined
+    // 2. Smashed Line Detection
+    // We check windows because the "Part Number" might be on the previous line 
+    // merged with the "Total/Price/Qty" block
     let foundMatch = false;
 
     for (let w = 0; w < 4; w++) {
       if (i + w >= rows.length) break;
+
+      // Join lines without spaces to detect smashed sequences
       let combinedText = "";
-      for (let k = 0; k <= w; k++) combinedText += rows[i + k]; // No spaces for smashed check!
+      for (let k = 0; k <= w; k++) combinedText += rows[i + k];
 
-      const smashMatch = combinedText.match(smashedRegex);
-      if (smashMatch) {
-        // Extract
-        const partNumber = smashMatch[1];
-        const total = parseFloat(smashMatch[2]);
-        const price = parseFloat(smashMatch[3]);
-        const qty = parseInt(smashMatch[4], 10);
+      // Reset regex state
+      smashedMathRegex.lastIndex = 0;
+      let match;
 
-        // Math Check
-        if (Math.abs(qty * price - total) < 1.0) {
+      // Iterate all potential matches in the line
+      while ((match = smashedMathRegex.exec(combinedText)) !== null) {
+        const total = parseFloat(match[1]);
+        const price = parseFloat(match[2]);
+        const qty = parseInt(match[3], 10);
+
+        // Math Check: Price * Qty == Total
+        if (Math.abs(price * qty - total) < 1.0) {
+
+          // MATCH FOUND
+          // Everything BEFORE the match is the Part Number / Description
+          const beforeMatch = combinedText.substring(0, match.index);
+
+          // Heuristic to clean up Part Number
+          // 1. Remove "3709" prefix (Line Item Index)
+          // 2. Remove trailing noise
+          let cleanPart = beforeMatch.replace(/^\d{3,4}/, '').trim();
+
+          // Further cleanup: If it contains "United Kingdom", remove it
+          cleanPart = cleanPart.replace(/United\s*Kingdom/gi, '').trim();
+          cleanPart = cleanPart.replace(/USD|PCS/g, '').trim();
+
+          // If empty, fallback
+          if (!cleanPart) cleanPart = "Unidentified Part";
+
           lines.push({
-            partNumber: partNumber,
-            description: "Extracted Part", // Description is often lost in smashed text
+            partNumber: cleanPart, // In smashed text, Part/Desc are merged
+            description: cleanPart,
             quantity: qty,
             netWeightKg: 0,
             valueUsd: total,
@@ -101,56 +135,14 @@ function parseLines(textBlock) {
             htsCode: pendingHts || '',
             countryOfOrigin: pendingCountry || ''
           });
+
           pendingHts = '';
           foundMatch = true;
-          i += w; // Advance
-          break;
+          i += w; // Advance loop
+          break; // Stop checking matches in this window
         }
       }
-    }
-    if (foundMatch) continue;
-
-    // 3. Try Clean Match (Fallback for normal lines)
-    for (let w = 0; w < 3; w++) {
-      if (i + w >= rows.length) break;
-      let combinedText = "";
-      for (let k = 0; k <= w; k++) combinedText += " " + rows[i + k]; // Spaces for clean check
-      combinedText = combinedText.trim().replace(/(\d),(\d)/g, '$1$2');
-
-      const match = combinedText.match(cleanRegex);
-      if (match) {
-        const qty = parseFloat(match[1]);
-        const price = parseFloat(match[2]);
-        const total = parseFloat(match[3]);
-
-        if (!isNaN(qty) && !isNaN(price) && !isNaN(total)) {
-          if (Math.abs(qty * price - total) < 2.0) {
-            // Extract Description
-            const rawDesc = combinedText.substring(0, combinedText.indexOf(match[0])).trim();
-            const tokens = rawDesc.split(/\s+/);
-            let partNumber = tokens[0];
-            let description = rawDesc.substring(partNumber.length).trim();
-            if (!description) { description = partNumber; partNumber = "N/A"; }
-
-            if (description.toLowerCase().includes('total')) break;
-
-            lines.push({
-              partNumber: partNumber,
-              description: description,
-              quantity: qty,
-              netWeightKg: 0,
-              valueUsd: total,
-              unitPrice: price,
-              htsCode: pendingHts || '',
-              countryOfOrigin: pendingCountry || ''
-            });
-            pendingHts = '';
-            foundMatch = true;
-            i += w;
-            break;
-          }
-        }
-      }
+      if (foundMatch) break;
     }
   }
 
@@ -178,7 +170,6 @@ async function parsePdf(buffer) {
 
   // OCR Fallback
   if (rawDoc.lines.length === 0) {
-    console.log("0 lines found. Triggering OCR...");
     const ocrUrl = process.env.OCR_SERVICE_URL || 'http://ocr:5000';
     try {
       const formData = new FormData();
@@ -192,7 +183,7 @@ async function parsePdf(buffer) {
           text = data.text;
           rawDoc = {
             header: parseHeader(text),
-            lines: parseLines(text),
+            lines: parseLines(text), // Retry parsing on OCR text
             meta: { ...meta, ocrUsed: true }
           };
         }
