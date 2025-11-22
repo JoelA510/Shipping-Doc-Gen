@@ -36,7 +36,8 @@ const canonicalSchema = {
           netWeightKg: { type: 'number' },
           valueUsd: { type: 'number' },
           htsCode: { type: 'string' },
-          countryOfOrigin: { type: 'string' }
+          countryOfOrigin: { type: 'string' },
+          purchaseOrderNumber: { type: 'string' }
         }
       }
     },
@@ -137,7 +138,8 @@ function normalizeDocument(rawDoc) {
       netWeightKg: Number.isNaN(netWeightKg) ? 0 : Number(netWeightKg),
       valueUsd: Number.isNaN(valueUsd) ? 0 : Number(valueUsd),
       htsCode: uppercase(line.htsCode),
-      countryOfOrigin: uppercase(line.countryOfOrigin)
+      countryOfOrigin: uppercase(line.countryOfOrigin),
+      purchaseOrderNumber: normalizeString(line.purchaseOrderNumber)
     };
 
     if (Number.isNaN(quantity) || Number.isNaN(netWeightKg) || Number.isNaN(valueUsd)) {

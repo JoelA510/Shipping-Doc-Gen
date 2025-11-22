@@ -81,72 +81,133 @@ function parseLines(textBlock) {
 
             // Extraction
             const beforeMatch = combinedText.substring(0, match.index);
+            let afterMatch = combinedText.substring(match.index + match[0].length);
 
-            // 1. Extract HTS from the garbage blob
+            // CRITICAL FIX: Recover the part of the "Quantity" that was actually the Part Number prefix
+            // match[3] is the full captured "Qty" string (e.g. "544506")
+            // rawQtyString is match[3]
+            // qtyCandidate is the valid qty (e.g. 5)
+            // The remainder "44506" belongs to the Part Number!
+            const qtyStr = qtyCandidate.toString();
+            if (rawQtyString.length > qtyStr.length) {
+              const remainder = rawQtyString.substring(qtyStr.length);
+              afterMatch = remainder + afterMatch;
+            }
+
+            // 1. Extract HTS
             let hts = "";
-            const htsMatch = beforeMatch.match(htsRegex);
+            const htsMatch = combinedText.match(htsRegex);
             if (htsMatch) hts = htsMatch[1];
 
-            // 2. Clean Part Number
-            // Remove HTS code first
-            let partNumber = beforeMatch.replace(htsRegex, '').trim();
+            // 2. Extract Part Number (FROM SUFFIX)
+            let partNumber = afterMatch.trim();
 
-            // Remove line item numbers (3-4 digits at start)
-            partNumber = partNumber.replace(/^\d{3,4}/, '').trim();
-
-            // Remove long reference numbers (10+ digits or patterns like 00143...)
-            partNumber = partNumber.replace(/\d{10,}/g, '').trim();
-
-            // Remove specific patterns (e.g., 4SX424405, OP006000143)
-            partNumber = partNumber.replace(/\d{4}[A-Z]{2}\d{4,}/g, '').trim();
-            partNumber = partNumber.replace(/[A-Z]{2}\d{9,}/g, '').trim();
-
-            // Remove repeating letter patterns (e.g., OPOP, FC FC)
-            partNumber = partNumber.replace(/([A-Z]{2,})\1+/g, '$1').trim();
-
-            // Remove noise words
-            partNumber = partNumber.replace(/USD|PCS|United\s*Kingdom/gi, '').trim();
-
-            // Extract distinctive Omron part number patterns:
-            // - Pattern 1: Letters followed by numbers/letters/hyphens (e.g., SL0A1275D, ER5018-021M, G9SA-321-SC)
-            // - Look for: 2+ letters, then mix of letters/numbers/hyphens, 5-20 total chars
-            let partMatch = partNumber.match(/([A-Z]{2}[0-9A-Z\-]{3,18})/);
-
-            // Pattern 2: If not found, try to find any alphanumeric with hyphens
-            if (!partMatch) {
-              partMatch = partNumber.match(/([A-Z0-9]+-[A-Z0-9\-]+)/);
+            // Cleanup Part Number
+            // It might be "44506-4010" or "44506-4010 ER5018..."
+            // Take the first token that looks like a part number
+            const partTokenMatch = partNumber.match(/^([A-Z0-9\-\.]+)/);
+            if (partTokenMatch) {
+              partNumber = partTokenMatch[1];
             }
 
-            // Pattern 3: If still not found, look for significant alphanumeric sequence
-            if (!partMatch) {
-              partMatch = partNumber.match(/([A-Z]{2,}[0-9A-Z]{3,})/);
+            // 3. Extract Description (From Next Line)
+            let description = "";
+
+            // Check if the suffix contained more than just the part number
+            if (afterMatch.length > partNumber.length + 2) {
+              description = afterMatch.substring(partNumber.length).trim();
             }
 
-            if (partMatch) {
-              partNumber = partMatch[1];
-              // Remove trailing garbage (pure numbers at end longer than 4 digits)
-              partNumber = partNumber.replace(/\d{5,}$/, '').trim();
-              // Remove leading OP prefix if it's a reference code artifact
-              partNumber = partNumber.replace(/^OP\d{6}/, '').trim();
-            } else if (partNumber.length > 20) {
-              partNumber = partNumber.substring(0, 20).trim();
+            // If description is empty/short, check the next row
+            if ((!description || description.length < 3) && i + w + 1 < rows.length) {
+              const nextRow = rows[i + w + 1];
+              // The next row often starts with the Part Number again
+              if (nextRow.startsWith(partNumber)) {
+                description = nextRow.substring(partNumber.length).trim();
+                i++; // Consume next line
+              } else if (nextRow.includes(partNumber)) {
+                // Sometimes it's "44506-4010 ER..."
+                description = nextRow.substring(nextRow.indexOf(partNumber) + partNumber.length).trim();
+                i++;
+              } else {
+                description = nextRow;
+                i++;
+              }
             }
 
-            if (!partNumber || partNumber.length < 3) partNumber = "Part";
+            // Cleanup Description
+            // 1. Remove leading non-alphanumeric garbage
+            description = description.replace(/^[^A-Z0-9]+/, '');
 
-            // Dedupe Key (fixed: use qtyCandidate not qty)
+            // 2. Remove repeating patterns "ER5018-021MER5018-021M"
+            // Split by space and check for duplicate tokens
+            const tokens = description.split(/\s+/);
+            const uniqueTokens = [];
+            for (const t of tokens) {
+              // If this token is a substring of the previous one (concatenation artifact), skip it
+              // e.g. "ER5018-021M" followed by "ER5018-021M,"
+              const cleanT = t.replace(/[,;]$/, '');
+              if (uniqueTokens.length > 0) {
+                const last = uniqueTokens[uniqueTokens.length - 1];
+                if (last.includes(cleanT) || cleanT.includes(last)) {
+                  // Keep the longer one
+                  if (cleanT.length > last.length) uniqueTokens[uniqueTokens.length - 1] = cleanT;
+                  continue;
+                }
+              }
+              uniqueTokens.push(t);
+            }
+            description = uniqueTokens.join(' ');
+
+            // 3. Hard dedup for the specific "ER5018-021MER5018-021M" case
+            if (description.length > 10) {
+              const mid = Math.floor(description.length / 2);
+              const first = description.substring(0, mid);
+              const second = description.substring(mid);
+              // If the second half starts with the start of the first half
+              if (second.startsWith(first.substring(0, 5))) {
+                // It's likely a repeat. Try to find the split point.
+                // Look for the Part Number inside the description?
+              }
+              // Regex for "TextText"
+              const repeatMatch = description.match(/^(.+?)\1/);
+              if (repeatMatch && repeatMatch[1].length > 3) {
+                description = repeatMatch[1];
+              }
+            }
+
+            // 4. Extract PO Number
+            // Look backwards for "OP..." pattern
+            let poNumber = "";
+            for (let back = 1; back < 15; back++) {
+              if (i - back >= 0) {
+                const prevRow = rows[i - back];
+
+                // Look for PO starting with 00, containing OP, and digits
+                // Raw text has repeated PO: "00143043OP006000143043OP00605"
+                // We capture the first instance: 00...OP...4digits
+                const poMatch = prevRow.match(/(00\d+OP\d{4})/);
+                if (poMatch) {
+                  poNumber = poMatch[1];
+                  break;
+                }
+              }
+            }
+
+            // Dedupe Key
             const lineKey = `${partNumber}-${qtyCandidate}-${total}`;
             if (!seenLines.has(lineKey)) {
               seenLines.add(lineKey);
               lines.push({
                 partNumber: partNumber,
-                description: partNumber, // Description is often lost in smashed text
+                description: description || "Description",
                 quantity: qtyCandidate,
                 netWeightKg: 0,
                 valueUsd: total,
                 unitPrice: price,
                 htsCode: hts || '',
-                countryOfOrigin: 'GB' // Inferred from header for this specific doc
+                countryOfOrigin: 'GB',
+                purchaseOrderNumber: poNumber || ''
               });
             }
 
