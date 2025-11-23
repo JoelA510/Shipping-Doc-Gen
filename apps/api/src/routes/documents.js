@@ -29,6 +29,10 @@ router.post('/:id/export', async (req, res) => {
         // Map template names
         const templateMap = {
             'sli': 'sli',
+            'nippon': 'nippon-sli',
+            'nippon-sli': 'nippon-sli',
+            'ceva': 'ceva-sli',
+            'ceva-sli': 'ceva-sli',
             'dhl': 'dhl-invoice',
             'dhl-invoice': 'dhl-invoice',
             'bol': 'generic-bol',

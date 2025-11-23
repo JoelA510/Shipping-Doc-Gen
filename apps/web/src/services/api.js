@@ -80,11 +80,11 @@ export const api = {
         });
     },
 
-    triggerExport: async (docId, type = 'sli') => {
+    triggerExport: async (docId, type = 'sli', template = 'sli') => {
         return request(`/documents/${docId}/export`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type })
+            body: JSON.stringify({ type, template })
         });
     },
 

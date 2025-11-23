@@ -11,6 +11,7 @@ export default function DocumentReview({ document, onBack, user }) {
     const [message, setMessage] = useState(null);
     const [newRefType, setNewRefType] = useState('PO');
     const [newRefValue, setNewRefValue] = useState('');
+    const [selectedTemplate, setSelectedTemplate] = useState('sli');
 
     const { header, lines, meta } = doc;
     const validationErrors = meta.validation || [];
@@ -113,7 +114,7 @@ export default function DocumentReview({ document, onBack, user }) {
         setIsExporting(true);
         setMessage(null);
         try {
-            const response = await api.triggerExport(doc.id, 'sli');
+            const response = await api.triggerExport(doc.id, 'sli', selectedTemplate);
 
             if (response && response.url) {
                 // Open URL in new window/tab - browser will handle the download
@@ -159,6 +160,15 @@ export default function DocumentReview({ document, onBack, user }) {
                                 <Edit2 className="w-4 h-4" />
                                 Edit Mode
                             </button>
+                            <select
+                                value={selectedTemplate}
+                                onChange={(e) => setSelectedTemplate(e.target.value)}
+                                className="border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                            >
+                                <option value="sli">Standard SLI</option>
+                                <option value="nippon">Nippon Express</option>
+                                <option value="ceva">CEVA Logistics</option>
+                            </select>
                             <button
                                 onClick={handleExport}
                                 disabled={isExporting}
