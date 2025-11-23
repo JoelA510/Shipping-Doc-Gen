@@ -393,6 +393,8 @@ async function parsePdf(buffer) {
 
   rawDoc.references = references;
 
+  console.log('[Parser] Extracted references:', JSON.stringify(references, null, 2));
+
   return normalizeDocument(rawDoc);
 }
 

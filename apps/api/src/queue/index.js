@@ -52,10 +52,13 @@ const worker = new Worker('ingestion', async job => {
             header: result.header,
             lines: result.lines,
             checksums: result.checksums,
+            references: result.references,
             meta: result.meta,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
+
+        console.log('[Queue] Storing document with references:', JSON.stringify(doc.references, null, 2));
         documents.set(docId, doc);
 
         // Update job with document ID
