@@ -4,7 +4,9 @@ const { validateEnv } = require('../config/env');
 function requireAuth(req, res, next) {
     const authHeader = req.headers.authorization;
 
+    // Debug log
     if (!authHeader) {
+        console.log('[Auth Middleware] Missing Authorization Header. Headers:', JSON.stringify(req.headers));
         return res.status(401).json({ error: 'No authorization header provided' });
     }
 

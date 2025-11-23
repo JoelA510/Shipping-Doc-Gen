@@ -1,12 +1,23 @@
-const API_URL = 'http://localhost:3001';
+export const API_URL = 'http://localhost:3001';
 
 let authToken = localStorage.getItem('token');
 
 const request = async (endpoint, options = {}) => {
+    // Ensure we get the latest token
+    const token = localStorage.getItem('token') || authToken;
+
+    // Debug: Check if token exists for non-auth endpoints
+    if (!token && !endpoint.startsWith('/auth/')) {
+        console.error('[API] No token found for request to', endpoint);
+        throw new Error('DEBUG: No authentication token found. Please login again.');
+    }
+
     const headers = {
         ...options.headers,
-        'Authorization': authToken ? `Bearer ${authToken}` : undefined
+        'Authorization': token ? `Bearer ${token}` : undefined
     };
+
+    // console.log(`[API] Request to ${endpoint} with token: ${token ? 'YES' : 'NO'}`);
 
     const response = await fetch(`${API_URL}${endpoint}`, {
         ...options,

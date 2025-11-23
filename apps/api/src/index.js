@@ -24,7 +24,7 @@ const port = process.env.PORT || 3001;
 // Security middleware
 app.use(helmet());
 app.use(cors({
-    origin: process.env.CORS_ORIGIN || '*',
+    origin: true, // Reflect request origin to support credentials
     credentials: true
 }));
 app.use(express.json({ limit: '10mb' })); // Limit payload size
@@ -52,6 +52,11 @@ app.use('/auth', authLimiter); // Stricter limit for auth
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// Serve static files (generated PDFs) - PUBLIC ACCESS
+// We need to get the config again or pass it down
+const config = validateEnv();
+app.use('/files', express.static(config.storagePath));
 
 // Public routes
 app.use('/auth', authRouter);

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Save, Download, ArrowLeft, Edit2, AlertTriangle, Clock, MessageSquare, Send, X } from 'lucide-react';
-import { api } from '../../services/api';
+import { Save, ArrowLeft, Edit2, AlertTriangle, Clock, MessageSquare, Send, X } from 'lucide-react';
+import { api, API_URL } from '../../services/api';
 import EditableField from '../common/EditableField';
 
 export default function DocumentReview({ document, onBack, user }) {
@@ -63,6 +62,54 @@ export default function DocumentReview({ document, onBack, user }) {
         });
     };
 
+    const handleAddressChange = (type, field, value) => {
+        setDoc(prev => ({
+            ...prev,
+            header: {
+                ...prev.header,
+                [type]: {
+                    ...prev.header[type],
+                    [field]: value
+                }
+            }
+        }));
+    };
+
+    const AddressBlock = ({ title, data, isEditing, onChange }) => {
+        // Fallback for legacy string data or null
+        if (!data || typeof data !== 'object') {
+            return (
+                <EditableField
+                    label={title}
+                    value={data || ''}
+                    isEditing={isEditing}
+                    onChange={(v) => onChange('name', v)} // Treat string as name
+                />
+            );
+        }
+
+        return (
+            <div className="space-y-3 border border-slate-200 p-4 rounded-lg bg-slate-50/50">
+                <h4 className="font-medium text-slate-700 text-sm flex items-center gap-2">
+                    {title}
+                </h4>
+                <div className="space-y-3">
+                    <EditableField label="Name" value={data.name} isEditing={isEditing} onChange={(v) => onChange('name', v)} />
+                    <EditableField label="Address" value={data.address} isEditing={isEditing} onChange={(v) => onChange('address', v)} />
+                    <EditableField label="Address 2" value={data.address2} isEditing={isEditing} onChange={(v) => onChange('address2', v)} />
+                    <div className="grid grid-cols-2 gap-3">
+                        <EditableField label="City" value={data.city} isEditing={isEditing} onChange={(v) => onChange('city', v)} />
+                        <EditableField label="State" value={data.state} isEditing={isEditing} onChange={(v) => onChange('state', v)} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <EditableField label="Zip" value={data.zip} isEditing={isEditing} onChange={(v) => onChange('zip', v)} />
+                        <EditableField label="Country" value={data.country} isEditing={isEditing} onChange={(v) => onChange('country', v)} />
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     const handleSave = async () => {
         setIsSaving(true);
         setMessage(null);
@@ -81,9 +128,18 @@ export default function DocumentReview({ document, onBack, user }) {
         setIsExporting(true);
         setMessage(null);
         try {
-            await api.triggerExport(doc.id, 'sli');
-            setMessage({ type: 'success', text: 'Export started. Check your email or download queue.' });
+            const response = await api.triggerExport(doc.id, 'sli');
+
+            if (response && response.url) {
+                // Open URL in new window/tab - browser will handle the download
+                const fullUrl = `${API_URL}${response.url}`;
+                window.open(fullUrl, '_blank');
+                setMessage({ type: 'success', text: 'Export complete. Download should begin shortly.' });
+            } else {
+                setMessage({ type: 'success', text: 'Export started. Check your email or download queue.' });
+            }
         } catch (err) {
+            console.error('Export failed:', err);
             setMessage({ type: 'error', text: `Export failed: ${err.message}` });
         } finally {
             setIsExporting(false);
@@ -123,7 +179,7 @@ export default function DocumentReview({ document, onBack, user }) {
                                 disabled={isExporting}
                                 className="btn-primary flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-200"
                             >
-                                <Download className="w-4 h-4" />
+                                {/* <Download className="w-4 h-4" /> */}
                                 {isExporting ? 'Exporting...' : 'Export SLI'}
                             </button>
                         </>
@@ -150,16 +206,14 @@ export default function DocumentReview({ document, onBack, user }) {
             </div>
 
             {message && (
-                <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
+                <div
                     className={`p-4 rounded-lg border ${message.type === 'success'
-                            ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                            : 'bg-red-50 border-red-200 text-red-800'
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                        : 'bg-red-50 border-red-200 text-red-800'
                         }`}
                 >
                     {message.text}
-                </motion.div>
+                </div>
             )}
 
             {validationErrors.length > 0 && (
@@ -186,31 +240,35 @@ export default function DocumentReview({ document, onBack, user }) {
                         <h3 className="text-lg font-semibold text-slate-900 mb-4 pb-2 border-b border-slate-100">
                             Shipment Details
                         </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <EditableField
-                                label="Shipper"
-                                value={header.shipper}
-                                isEditing={isEditing}
-                                onChange={(val) => handleHeaderChange('shipper', val)}
-                            />
-                            <EditableField
-                                label="Consignee"
-                                value={header.consignee}
-                                isEditing={isEditing}
-                                onChange={(val) => handleHeaderChange('consignee', val)}
-                            />
-                            <EditableField
-                                label="Incoterm"
-                                value={header.incoterm}
-                                isEditing={isEditing}
-                                onChange={(val) => handleHeaderChange('incoterm', val)}
-                            />
-                            <EditableField
-                                label="Currency"
-                                value={header.currency}
-                                isEditing={isEditing}
-                                onChange={(val) => handleHeaderChange('currency', val)}
-                            />
+                        <div className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <AddressBlock
+                                    title="Shipper"
+                                    data={header.shipper}
+                                    isEditing={isEditing}
+                                    onChange={(field, val) => handleAddressChange('shipper', field, val)}
+                                />
+                                <AddressBlock
+                                    title="Consignee"
+                                    data={header.consignee}
+                                    isEditing={isEditing}
+                                    onChange={(field, val) => handleAddressChange('consignee', field, val)}
+                                />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <EditableField
+                                    label="Incoterm"
+                                    value={header.incoterm}
+                                    isEditing={isEditing}
+                                    onChange={(val) => handleHeaderChange('incoterm', val)}
+                                />
+                                <EditableField
+                                    label="Currency"
+                                    value={header.currency}
+                                    isEditing={isEditing}
+                                    onChange={(val) => handleHeaderChange('currency', val)}
+                                />
+                            </div>
                         </div>
                     </section>
 
