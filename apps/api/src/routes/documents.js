@@ -1,26 +1,17 @@
 const express = require('express');
 const router = express.Router();
-const { getJob, getDocument } = require('../queue');
+const { getJob, getDocument, updateDocument } = require('../queue');
 
-// Get document by ID
-router.get('/:id', async (req, res) => {
-    try {
-        const doc = await getDocument(req.params.id);
-        if (!doc) {
-            return res.status(404).json({ error: 'Document not found' });
-        }
-        res.json(doc);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
+// ... (existing code)
 
-// Update document (Stub)
+// Update document
 router.put('/:id', async (req, res) => {
-    // In a real implementation, this would update the document in storage/DB
-    // For now, we just echo back the data to simulate a successful update
-    console.log(`Updating document ${req.params.id}`, req.body);
-    res.json({ ...req.body, id: req.params.id });
+    const updated = updateDocument(req.params.id, req.body);
+    if (!updated) {
+        return res.status(404).json({ error: 'Document not found' });
+    }
+    console.log(`Updated document ${req.params.id}`);
+    res.json(updated);
 });
 
 const { generatePDF } = require('../services/generator');

@@ -1,48 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Save, ArrowLeft, Edit2, AlertTriangle, Clock, MessageSquare, Send, X } from 'lucide-react';
+import { Save, ArrowLeft, Edit2, AlertTriangle, X, Plus, Trash2 } from 'lucide-react';
 import { api, API_URL } from '../../services/api';
 import EditableField from '../common/EditableField';
 
 export default function DocumentReview({ document, onBack, user }) {
     const [doc, setDoc] = useState(document);
-    const [isEditing, setIsEditing] = useState(false);
+    const [isEditing, setIsEditing] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
     const [message, setMessage] = useState(null);
-    const [history, setHistory] = useState([]);
-    const [comments, setComments] = useState([]);
-    const [newComment, setNewComment] = useState('');
-
-    useEffect(() => {
-        if (doc.id) {
-            loadHistoryAndComments();
-        }
-    }, [doc.id]);
-
-    const loadHistoryAndComments = async () => {
-        try {
-            const [h, c] = await Promise.all([
-                api.getHistory(doc.id),
-                api.getComments(doc.id)
-            ]);
-            setHistory(h);
-            setComments(c);
-        } catch (err) {
-            console.error('Failed to load history/comments', err);
-        }
-    };
-
-    const handleAddComment = async (e) => {
-        e.preventDefault();
-        if (!newComment.trim()) return;
-        try {
-            await api.addComment(doc.id, newComment, user.username);
-            setNewComment('');
-            loadHistoryAndComments();
-        } catch (err) {
-            setMessage({ type: 'error', text: `Failed to add comment: ${err.message}` });
-        }
-    };
+    const [newRefType, setNewRefType] = useState('PO');
+    const [newRefValue, setNewRefValue] = useState('');
 
     const { header, lines, meta } = doc;
     const validationErrors = meta.validation || [];
@@ -73,6 +41,23 @@ export default function DocumentReview({ document, onBack, user }) {
                 }
             }
         }));
+    };
+
+    const handleAddReference = () => {
+        if (!newRefValue) return;
+        const newRef = { type: newRefType, value: newRefValue };
+        const updatedDoc = {
+            ...doc,
+            references: [...(doc.references || []), newRef]
+        };
+        setDoc(updatedDoc);
+        setNewRefValue('');
+    };
+
+    const handleRemoveReference = (index) => {
+        const updatedRefs = [...(doc.references || [])];
+        updatedRefs.splice(index, 1);
+        setDoc({ ...doc, references: updatedRefs });
     };
 
     const AddressBlock = ({ title, data, isEditing, onChange }) => {
@@ -232,9 +217,9 @@ export default function DocumentReview({ document, onBack, user }) {
                 </div>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-6">
                 {/* Main Content */}
-                <div className="lg:col-span-2 space-y-6">
+                <div className="space-y-6">
                     {/* Header Section */}
                     <section className="card">
                         <h3 className="text-lg font-semibold text-slate-900 mb-4 pb-2 border-b border-slate-100">
@@ -270,6 +255,70 @@ export default function DocumentReview({ document, onBack, user }) {
                                 />
                             </div>
                         </div>
+                    </section>
+
+                    {/* References Section */}
+                    <section className="card">
+                        <h3 className="text-lg font-semibold text-slate-900 mb-4 pb-2 border-b border-slate-100">
+                            References
+                        </h3>
+
+                        <div className="space-y-3 mb-4">
+                            {(doc.references || []).map((ref, idx) => (
+                                <div key={idx} className="flex items-center gap-2 p-2 bg-slate-50 rounded border border-slate-100">
+                                    <span className="font-medium text-slate-700 w-24">{ref.type}:</span>
+                                    <span className="flex-1 text-slate-900">{ref.value}</span>
+                                    {isEditing && (
+                                        <button
+                                            onClick={() => handleRemoveReference(idx)}
+                                            className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded"
+                                            title="Remove reference"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                            {(!doc.references || doc.references.length === 0) && (
+                                <div className="text-slate-400 italic text-sm">No references added</div>
+                            )}
+                        </div>
+
+                        {/* Add Form */}
+                        {isEditing && (doc.references || []).length < 5 && (
+                            <div className="flex gap-3 items-end border-t border-slate-100 pt-4 mt-4">
+                                <div className="w-32">
+                                    <label className="block text-xs font-medium text-slate-500 mb-1">Type</label>
+                                    <select
+                                        value={newRefType}
+                                        onChange={(e) => setNewRefType(e.target.value)}
+                                        className="input-field py-1.5 text-sm"
+                                    >
+                                        <option value="PO">PO</option>
+                                        <option value="SO">SO</option>
+                                        <option value="Invoice">Invoice</option>
+                                        <option value="Shipment">Shipment</option>
+                                        <option value="HAWB">HAWB</option>
+                                    </select>
+                                </div>
+                                <div className="flex-1">
+                                    <label className="block text-xs font-medium text-slate-500 mb-1">Value</label>
+                                    <input
+                                        type="text"
+                                        value={newRefValue}
+                                        onChange={(e) => setNewRefValue(e.target.value)}
+                                        className="input-field py-1.5 text-sm"
+                                        placeholder="Enter number"
+                                    />
+                                </div>
+                                <button
+                                    onClick={handleAddReference}
+                                    className="btn-secondary py-1.5 px-3 flex items-center gap-1 text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+                                >
+                                    <Plus size={16} /> Add
+                                </button>
+                            </div>
+                        )}
                     </section>
 
                     {/* Line Items Section */}
@@ -322,76 +371,7 @@ export default function DocumentReview({ document, onBack, user }) {
                     </section>
                 </div>
 
-                {/* Sidebar */}
-                <div className="space-y-6">
-                    {/* History */}
-                    <section className="card">
-                        <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-100">
-                            <Clock className="w-4 h-4 text-slate-400" />
-                            <h3 className="font-semibold text-slate-900">History</h3>
-                        </div>
-                        <div className="max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-                            {history.length === 0 ? (
-                                <p className="text-slate-400 text-sm italic">No history yet.</p>
-                            ) : (
-                                <ul className="space-y-3">
-                                    {history.map((item, i) => (
-                                        <li key={i} className="text-sm relative pl-4 border-l-2 border-slate-200">
-                                            <div className="flex justify-between items-start">
-                                                <span className="font-medium text-slate-700">{item.user}</span>
-                                                <span className="text-xs text-slate-400">{new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                            </div>
-                                            <p className="text-slate-500 text-xs mt-0.5">{item.action}</p>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-                        </div>
-                    </section>
 
-                    {/* Comments */}
-                    <section className="card flex flex-col h-[400px]">
-                        <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-100">
-                            <MessageSquare className="w-4 h-4 text-slate-400" />
-                            <h3 className="font-semibold text-slate-900">Comments</h3>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto mb-4 pr-2 space-y-3 custom-scrollbar">
-                            {comments.length === 0 ? (
-                                <div className="h-full flex items-center justify-center text-slate-400 text-sm italic">
-                                    No comments yet.
-                                </div>
-                            ) : (
-                                comments.map((comment) => (
-                                    <div key={comment.id} className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                                        <div className="flex justify-between items-center mb-1">
-                                            <span className="font-semibold text-xs text-primary-700">{comment.user}</span>
-                                            <span className="text-[10px] text-slate-400">{new Date(comment.timestamp).toLocaleDateString()}</span>
-                                        </div>
-                                        <p className="text-sm text-slate-600">{comment.text}</p>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-
-                        <form onSubmit={handleAddComment} className="relative">
-                            <input
-                                type="text"
-                                value={newComment}
-                                onChange={(e) => setNewComment(e.target.value)}
-                                placeholder="Add a comment..."
-                                className="input-field pr-10"
-                            />
-                            <button
-                                type="submit"
-                                disabled={!newComment.trim()}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-primary-600 hover:bg-primary-50 rounded-md disabled:opacity-50 disabled:hover:bg-transparent transition-colors"
-                            >
-                                <Send className="w-4 h-4" />
-                            </button>
-                        </form>
-                    </section>
-                </div>
             </div>
         </div>
     );

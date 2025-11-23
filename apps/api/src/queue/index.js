@@ -130,8 +130,19 @@ function getDocument(id) {
     return documents.get(id);
 }
 
+function updateDocument(id, data) {
+    if (documents.has(id)) {
+        const existing = documents.get(id);
+        const updated = { ...existing, ...data, updatedAt: new Date().toISOString() };
+        documents.set(id, updated);
+        return updated;
+    }
+    return null;
+}
+
 module.exports = {
     createJob,
     getJob,
-    getDocument
+    getDocument,
+    updateDocument
 };

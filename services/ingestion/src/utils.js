@@ -9,8 +9,32 @@ const canonicalSchema = {
       required: ['shipper', 'consignee', 'incoterm', 'currency'],
       additionalProperties: true,
       properties: {
-        shipper: { type: 'string' },
-        consignee: { type: 'string' },
+        shipper: {
+          type: 'object',
+          required: ['name'],
+          properties: {
+            name: { type: 'string' },
+            address: { type: 'string' },
+            address2: { type: 'string' },
+            city: { type: 'string' },
+            state: { type: 'string' },
+            zip: { type: 'string' },
+            country: { type: 'string' }
+          }
+        },
+        consignee: {
+          type: 'object',
+          required: ['name'],
+          properties: {
+            name: { type: 'string' },
+            address: { type: 'string' },
+            address2: { type: 'string' },
+            city: { type: 'string' },
+            state: { type: 'string' },
+            zip: { type: 'string' },
+            country: { type: 'string' }
+          }
+        },
         incoterm: { type: 'string' },
         currency: { type: 'string' }
       }
@@ -114,10 +138,11 @@ function computeChecksums(lines) {
 }
 
 function normalizeDocument(rawDoc) {
+  const { parseAddress } = require('./pdf/addressParser');
   const normalizationNotes = {};
   const header = {
-    shipper: normalizeString(rawDoc.header.shipper),
-    consignee: normalizeString(rawDoc.header.consignee),
+    shipper: parseAddress(rawDoc.header.shipper),
+    consignee: parseAddress(rawDoc.header.consignee),
     incoterm: uppercase(rawDoc.header.incoterm),
     currency: uppercase(rawDoc.header.currency),
     reference: rawDoc.header.reference ? normalizeString(rawDoc.header.reference) : undefined

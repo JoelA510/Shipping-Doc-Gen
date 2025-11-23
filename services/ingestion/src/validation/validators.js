@@ -1,7 +1,7 @@
 const { ErrorCatalog } = require('./catalog');
 
 // Mock HTS list for prototype
-const KNOWN_HTS_CODES = new Set(['847150', '902710', '851762']);
+const KNOWN_HTS_CODES = new Set(['847150', '902710', '851762', '853650', '731210']);
 
 // Expanded Country list (ISO 3166-1 alpha-2)
 const VALID_COUNTRIES = new Set([
@@ -161,24 +161,24 @@ function validateCompliance(doc) {
         }
 
         // Validate Weight
-        const weightError = validateWeight(line.netWeight, line.weightUnit);
+        const weightError = validateWeight(line.netWeightKg, 'KG'); // Canonical is always KG
         if (weightError) {
             validationErrors.push({
                 ...weightError,
                 lineIndex: index,
                 field: 'netWeight',
-                value: line.netWeight
+                value: line.netWeightKg
             });
         }
 
         // Validate Value
-        const valueError = validateValue(line.value, line.currency);
+        const valueError = validateValue(line.valueUsd, 'USD'); // Canonical is always USD
         if (valueError) {
             validationErrors.push({
                 ...valueError,
                 lineIndex: index,
                 field: 'value',
-                value: line.value
+                value: line.valueUsd
             });
         }
     });
