@@ -14,6 +14,12 @@ async function generatePDF(data, templateName = 'sli') {
         const templatePath = path.join(__dirname, `../templates/${templateName}.hbs`);
         console.log('[Generator] Loading template:', templatePath);
         const templateHtml = fs.readFileSync(templatePath, 'utf8');
+
+        // Register Handlebars helpers
+        handlebars.registerHelper('eq', function (a, b) {
+            return a === b;
+        });
+
         const template = handlebars.compile(templateHtml);
 
         // Add current date if not present
