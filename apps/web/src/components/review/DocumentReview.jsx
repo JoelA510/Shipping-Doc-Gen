@@ -299,6 +299,7 @@ export default function DocumentReview({ document, onBack, user }) {
                                         <option value="Invoice">Invoice</option>
                                         <option value="Shipment">Shipment</option>
                                         <option value="HAWB">HAWB</option>
+                                        <option value="Other">Other</option>
                                     </select>
                                 </div>
                                 <div className="flex-1">

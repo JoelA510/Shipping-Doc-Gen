@@ -182,6 +182,7 @@ function normalizeDocument(rawDoc) {
     header,
     lines,
     checksums,
+    references: rawDoc.references || [], // Preserve references array
     meta: {
       sourceType: rawDoc.meta.sourceType,
       raw: rawDoc.meta.raw,
