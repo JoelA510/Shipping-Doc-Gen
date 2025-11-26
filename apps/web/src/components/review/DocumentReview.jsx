@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Save, ArrowLeft, Edit2, AlertTriangle, X, Plus, Trash2 } from 'lucide-react';
 import { api, API_URL } from '../../services/api';
 import EditableField from '../common/EditableField';
+import Comments from './Comments';
+import History from './History';
 
 export default function DocumentReview({ document, onBack, user }) {
     const [doc, setDoc] = useState(document);
@@ -227,9 +229,9 @@ export default function DocumentReview({ document, onBack, user }) {
                 </div>
             )}
 
-            <div className="grid grid-cols-1 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Main Content */}
-                <div className="space-y-6">
+                <div className="lg:col-span-2 space-y-6">
                     {/* Header Section */}
                     <section className="card">
                         <h3 className="text-lg font-semibold text-slate-900 mb-4 pb-2 border-b border-slate-100">
@@ -382,7 +384,11 @@ export default function DocumentReview({ document, onBack, user }) {
                     </section>
                 </div>
 
-
+                {/* Sidebar */}
+                <div className="space-y-6">
+                    <Comments documentId={doc.id} user={user} />
+                    <History documentId={doc.id} />
+                </div>
             </div>
         </div>
     );

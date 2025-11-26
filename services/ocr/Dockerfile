@@ -1,15 +1,18 @@
-FROM node:18-alpine
-
-# Install poppler-utils for pdftotext
-RUN apk add --no-cache poppler-utils
+FROM python:3.9-slim
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Install system dependencies required for OpenCV (used by EasyOCR)
+RUN apt-get update && apt-get install -y \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
-RUN npm ci --only=production
+# Copy requirements and install Python dependencies
+COPY requirements.txt .
+# Install torch CPU version specifically to save space if GPU not needed/available in container
+# But easyocr pulls torch anyway. Let's stick to simple install first.
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
@@ -17,9 +20,5 @@ COPY . .
 # Expose port
 EXPOSE 5000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:5000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
-
-# Start server
-CMD ["node", "index.js"]
+# Run the application
+CMD ["python", "app.py"]

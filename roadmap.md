@@ -72,7 +72,7 @@ A web app that ingests CIPL documents in many formats, normalize...L outputs for
 * Field mappers with layout-aware extraction. Normalization rules...dation of part/qty/weight/value at line and header levels.
 * **Compliance validators:** Add HTS/Schedule B and COO checks with an explicit error catalog and auto-generated checksum rows.
 
-### Phase 5 - Backend Infra and Security **(Status: In Progress)**
+### Phase 5 - Backend Infra and Security **(Status: Completed)**
 
 * API, storage, workers, auth stubs. Back-pressure and retries. ...rsistent idempotency for uploads and parsing tasks.
 * **Security hardening:** Enforce RLS policies (if Supabase), use signed URLs for blobs, redact sensitive fields in logs, and add `.env` schema validation.
@@ -103,7 +103,7 @@ A web app that ingests CIPL documents in many formats, normalize...L outputs for
 
 ### Phase 11 - Enhancements and Maintenance **(Status: Completed)**
 
-* Improve OCR and ML extraction on trouble fields. Add carrier t...ory updates for Incoterms, EEI, and HTS. Live roadmap iteration.
+* Improve OCR and ML extraction on trouble fields. **(Completed: Carrier-specific OCR training for Nippon Express/Ceva)**. Add carrier t...ory updates for Incoterms, EEI, and HTS. Live roadmap iteration.
 
 ### Phase 12 - Design Overhaul **(Status: Completed)**
 

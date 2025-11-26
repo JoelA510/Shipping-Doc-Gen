@@ -2,6 +2,9 @@ const { parseFile } = require('@shipping-doc-gen/ingestion');
 const { Queue, Worker } = require('bullmq');
 const IORedis = require('ioredis');
 const { v4: uuidv4 } = require('uuid');
+const { PrismaClient } = require('@prisma/client');
+
+const prisma = new PrismaClient();
 
 // Redis connection
 const connection = new IORedis({
@@ -13,16 +16,14 @@ const connection = new IORedis({
 // Create Queue
 const ingestionQueue = new Queue('ingestion', { connection });
 
-// In-memory store for job status (for simple polling) and documents
-// In a real app, this would be in Redis or a DB
+// In-memory store for job status (still useful for immediate feedback, but DB is source of truth for docs)
 const jobs = new Map();
-const documents = new Map();
 
 // Worker processor
 const worker = new Worker('ingestion', async job => {
     const { storagePath, filename, jobId } = job.data;
 
-    // Update local job status (simulating DB update)
+    // Update local job status
     const localJob = jobs.get(jobId);
     if (localJob) {
         localJob.status = 'processing';
@@ -30,6 +31,14 @@ const worker = new Worker('ingestion', async job => {
     }
 
     try {
+        // Create initial document record
+        const docRecord = await prisma.document.create({
+            data: {
+                filename,
+                status: 'processing'
+            }
+        });
+
         const ext = filename.split('.').pop().toLowerCase();
 
         // Map mimetype/extension to ingestion types
@@ -44,27 +53,25 @@ const worker = new Worker('ingestion', async job => {
 
         const result = await parseFile(buffer, type);
 
-        // Store result
-        const docId = uuidv4();
-        const doc = {
-            id: docId,
-            fileName: filename,
-            header: result.header,
-            lines: result.lines,
-            checksums: result.checksums,
-            references: result.references,
-            meta: result.meta,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        };
+        // Update document with results
+        const updatedDoc = await prisma.document.update({
+            where: { id: docRecord.id },
+            data: {
+                status: 'completed',
+                header: JSON.stringify(result.header),
+                lines: JSON.stringify(result.lines),
+                checksums: JSON.stringify(result.checksums),
+                references: JSON.stringify(result.references),
+                meta: JSON.stringify(result.meta)
+            }
+        });
 
-        console.log('[Queue] Storing document with references:', JSON.stringify(doc.references, null, 2));
-        documents.set(docId, doc);
+        console.log('[Queue] Stored document:', updatedDoc.id);
 
         // Update job with document ID
         if (localJob) {
             localJob.status = 'completed';
-            localJob.documentId = docId;
+            localJob.documentId = updatedDoc.id;
             localJob.updatedAt = new Date().toISOString();
         }
 
@@ -73,10 +80,10 @@ const worker = new Worker('ingestion', async job => {
         analytics.trackEvent('document_processed', {
             fileName: filename,
             type,
-            documentId: docId
+            documentId: updatedDoc.id
         });
 
-        return { documentId: docId };
+        return { documentId: updatedDoc.id };
     } catch (error) {
         console.error('Processing error:', error);
         if (localJob) {
@@ -129,23 +136,58 @@ function getJob(id) {
     return jobs.get(id);
 }
 
-function getDocument(id) {
-    return documents.get(id);
-}
+async function getDocument(id) {
+    const doc = await prisma.document.findUnique({
+        where: { id },
+        include: { comments: true, auditLogs: true }
+    });
 
-function updateDocument(id, data) {
-    if (documents.has(id)) {
-        const existing = documents.get(id);
-        const updated = { ...existing, ...data, updatedAt: new Date().toISOString() };
-        documents.set(id, updated);
-        return updated;
+    if (doc) {
+        // Parse JSON fields back to objects
+        return {
+            ...doc,
+            header: doc.header ? JSON.parse(doc.header) : null,
+            lines: doc.lines ? JSON.parse(doc.lines) : [],
+            checksums: doc.checksums ? JSON.parse(doc.checksums) : null,
+            references: doc.references ? JSON.parse(doc.references) : [],
+            meta: doc.meta ? JSON.parse(doc.meta) : null,
+            createdAt: doc.createdAt.toISOString(),
+            updatedAt: doc.updatedAt.toISOString()
+        };
     }
     return null;
+}
+
+async function updateDocument(id, data) {
+    try {
+        // Prepare data for update (stringify JSON fields if present)
+        const updateData = {};
+        if (data.status) updateData.status = data.status;
+        if (data.header) updateData.header = JSON.stringify(data.header);
+        if (data.lines) updateData.lines = JSON.stringify(data.lines);
+
+        const doc = await prisma.document.update({
+            where: { id },
+            data: updateData
+        });
+
+        return {
+            ...doc,
+            header: doc.header ? JSON.parse(doc.header) : null,
+            lines: doc.lines ? JSON.parse(doc.lines) : [],
+            createdAt: doc.createdAt.toISOString(),
+            updatedAt: doc.updatedAt.toISOString()
+        };
+    } catch (error) {
+        console.error('Error updating document:', error);
+        return null;
+    }
 }
 
 module.exports = {
     createJob,
     getJob,
     getDocument,
-    updateDocument
+    updateDocument,
+    prisma // Export prisma for other modules
 };

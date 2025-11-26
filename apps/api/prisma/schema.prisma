@@ -1,0 +1,62 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  password  String
+  role      String   @default("user")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  comments  Comment[]
+  auditLogs AuditLog[]
+}
+
+model Document {
+  id         String   @id @default(uuid())
+  filename   String
+  status     String   @default("pending") // pending, processing, completed, failed
+  header     String?  // JSON string
+  lines      String?  // JSON string
+  checksums  String?  // JSON string
+  references String?  // JSON string
+  meta       String?  // JSON string
+  error      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  comments  Comment[]
+  auditLogs AuditLog[]
+}
+
+model Comment {
+  id         String   @id @default(uuid())
+  text       String
+  userId     String
+  documentId String
+  createdAt  DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id])
+  document Document @relation(fields: [documentId], references: [id])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  action     String
+  userId     String?
+  documentId String?
+  details    String?  // JSON string
+  timestamp  DateTime @default(now())
+
+  user     User?     @relation(fields: [userId], references: [id])
+  document Document? @relation(fields: [documentId], references: [id])
+}

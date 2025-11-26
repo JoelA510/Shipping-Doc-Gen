@@ -1,7 +1,11 @@
 const winston = require('winston');
 
 // Keys to redact
-const SENSITIVE_KEYS = ['password', 'token', 'secret', 'authorization', 'credit_card'];
+const SENSITIVE_KEYS = [
+    'password', 'token', 'secret', 'authorization', 'credit_card',
+    'email', 'phone', 'mobile', 'address', 'ssn', 'ein',
+    'value', 'price', 'cost', 'amount' // Trade data
+];
 
 const redact = winston.format((info) => {
     const redactValue = (obj) => {

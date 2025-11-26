@@ -44,3 +44,7 @@ playwright/.cache/
 # Training Docs
 training_docs/
 venv/
+.agent/
+match_files.ps1
+*.db
+*.sqlite
