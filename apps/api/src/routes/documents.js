@@ -81,20 +81,9 @@ router.post('/:id/export', async (req, res) => {
             return res.status(404).json({ error: 'Document not found' });
         }
 
-        // Map template names
-        const templateMap = {
-            'sli': 'sli',
-            'nippon': 'nippon-sli',
-            'nippon-sli': 'nippon-sli',
-            'ceva': 'ceva-sli',
-            'ceva-sli': 'ceva-sli',
-            'dhl': 'dhl-invoice',
-            'dhl-invoice': 'dhl-invoice',
-            'bol': 'generic-bol',
-            'generic-bol': 'generic-bol'
-        };
+        const { TEMPLATE_MAP } = require('../config/templates');
 
-        const templateName = templateMap[template] || 'sli'; // Default to SLI
+        const templateName = TEMPLATE_MAP[template] || 'sli'; // Default to SLI
         console.log(`Generating PDF for document ${req.params.id} as ${type} using template ${templateName}`);
 
         const pdfBuffer = await generatePDF(doc, templateName);

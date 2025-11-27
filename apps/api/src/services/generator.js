@@ -3,6 +3,8 @@ const handlebars = require('handlebars');
 const fs = require('fs');
 const path = require('path');
 
+const { TEMPLATE_DEFAULTS } = require('../config/templates');
+
 /**
  * Generate PDF from data and template
  * @param {Object} data - Document data
@@ -42,16 +44,20 @@ async function generatePDF(data, templateName = 'sli') {
             console.log('[Generator] Setting page content');
             await page.setContent(html, { waitUntil: 'networkidle0' });
             console.log('[Generator] Generating PDF');
-            const pdfBuffer = await page.pdf({
-                format: 'A4',
+
+            const defaults = TEMPLATE_DEFAULTS[templateName] || { format: 'A4' };
+            const pdfOptions = {
                 printBackground: true,
                 margin: {
                     top: '20px',
                     right: '20px',
                     bottom: '20px',
                     left: '20px'
-                }
-            });
+                },
+                ...defaults
+            };
+
+            const pdfBuffer = await page.pdf(pdfOptions);
             console.log('[Generator] PDF generated successfully');
             return pdfBuffer;
         } finally {
