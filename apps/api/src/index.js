@@ -8,6 +8,7 @@ const statusRouter = require('./routes/status');
 const metricsRouter = require('./routes/metrics');
 const authRouter = require('./routes/auth');
 const complianceRouter = require('./routes/compliance');
+const templatesRouter = require('./routes/templates');
 const { validateEnv } = require('./config/env');
 const { requireAuth } = require('./middleware/auth');
 
@@ -67,6 +68,7 @@ app.use('/metrics', metricsRouter);
 app.use('/upload', requireAuth, uploadRouter);
 app.use('/documents', requireAuth, documentsRouter);
 app.use('/compliance', requireAuth, complianceRouter);
+app.use('/templates', requireAuth, templatesRouter);
 app.use('/', requireAuth, statusRouter);
 
 // 404 handler
