@@ -5,24 +5,6 @@ const rateLimit = require('express-rate-limit');
 const uploadRouter = require('./routes/upload');
 const documentsRouter = require('./routes/documents');
 const statusRouter = require('./routes/status');
-const metricsRouter = require('./routes/metrics');
-const authRouter = require('./routes/auth');
-const complianceRouter = require('./routes/compliance');
-const templatesRouter = require('./routes/templates');
-const notificationsRouter = require('./routes/notifications');
-const carriersRouter = require('./routes/carriers');
-const { validateEnv } = require('./config/env');
-const { requireAuth } = require('./middleware/auth');
-
-// Validate env at startup
-try {
-    validateEnv();
-} catch (error) {
-    console.error(error.message);
-    process.exit(1);
-}
-
-const app = express();
 const port = process.env.PORT || 3001;
 
 // Security middleware

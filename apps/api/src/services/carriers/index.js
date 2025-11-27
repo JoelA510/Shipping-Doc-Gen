@@ -35,12 +35,31 @@ class CarrierService {
         }
     }
 
+    // Simple in-memory cache: { hash: { rates, timestamp } }
+    static rateCache = new Map();
+    static CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+
+    /**
+     * Generate a cache key for the shipment
+     */
+    static getCacheKey(shipment) {
+        return JSON.stringify(shipment);
+    }
+
     /**
      * Get all available rates from all active accounts
      * @param {string} userId 
      * @param {object} shipment 
      */
     static async shopRates(userId, shipment) {
+        const cacheKey = this.getCacheKey(shipment);
+        const cached = this.rateCache.get(cacheKey);
+
+        if (cached && (Date.now() - cached.timestamp < this.CACHE_TTL)) {
+            console.log('Returning cached rates');
+            return cached.rates;
+        }
+
         const accounts = await prisma.carrierAccount.findMany({
             where: { userId, isActive: true }
         });
@@ -57,7 +76,15 @@ class CarrierService {
         });
 
         const results = await Promise.all(ratePromises);
-        return results.flat().sort((a, b) => a.amount - b.amount);
+        const rates = results.flat().sort((a, b) => a.amount - b.amount);
+
+        // Cache the results
+        this.rateCache.set(cacheKey, {
+            rates,
+            timestamp: Date.now()
+        });
+
+        return rates;
     }
 }
 
