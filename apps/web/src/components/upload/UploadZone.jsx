@@ -95,7 +95,7 @@ export default function UploadZone({ onDocumentUploaded }) {
                         </h3>
                         <p className="text-slate-500 mb-8 max-w-sm">
                             Supports PDF, Excel (XLSX), CSV, and Word (DOCX).
-                            We'll automatically extract the data for you.
+                            We&apos;ll automatically extract the data for you.
                         </p>
 
                         <div className="relative">

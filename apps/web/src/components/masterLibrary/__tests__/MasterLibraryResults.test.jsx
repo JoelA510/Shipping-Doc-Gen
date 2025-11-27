@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+/* eslint-disable react/display-name */
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import MasterLibraryResults from '../MasterLibraryResults';
@@ -7,23 +8,23 @@ import { MasterLibraryContext } from '../../contexts/MasterLibraryContext';
 vi.mock('react-window', async () => {
   const React = await vi.importActual('react');
   return {
-    FixedSizeList: React.forwardRef(
-      ({ itemCount, itemData, children, outerElementType: Outer = 'div' }, ref) => {
-        const listApi = { scrollToItem: () => { } };
-        if (typeof ref === 'function') {
-          ref(listApi);
-        } else if (ref) {
-          ref.current = listApi;
-        }
+    FixedSizeList: Object.assign(
+      React.forwardRef(
+        ({ itemCount, itemData, children, outerElementType: Outer = 'div' }, ref) => {
+          React.useImperativeHandle(ref, () => ({
+            scrollToItem: () => { }
+          }));
 
-        return (
-          <Outer data-testid="virtual-list" data-count={itemCount}>
-            {Array.from({ length: Math.min(itemCount, itemData.length, 5) }).map((_, index) =>
-              children({ index, style: {}, data: itemData })
-            )}
-          </Outer>
-        );
-      }
+          return (
+            <Outer data-testid="virtual-list" data-count={itemCount}>
+              {Array.from({ length: Math.min(itemCount, itemData.length, 5) }).map((_, index) =>
+                children({ index, style: {}, data: itemData })
+              )}
+            </Outer>
+          );
+        }
+      ),
+      { displayName: 'FixedSizeList' }
     )
   };
 });

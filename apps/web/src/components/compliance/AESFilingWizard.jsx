@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, FileText, CheckCircle, AlertTriangle, Copy, ExternalLink } from 'lucide-react';
+import { Shield, FileText, CheckCircle, AlertTriangle, Copy, ExternalLink, Loader } from 'lucide-react';
 
 export default function AESFilingWizard({ shipment, onClose, onFiled }) {
     const [step, setStep] = useState('review'); // review, file, success
@@ -115,9 +115,9 @@ export default function AESFilingWizard({ shipment, onClose, onFiled }) {
                                 <label className="label">Port of Export</label>
                                 <input
                                     value={eeiData.portOfExport}
-                                    onChange={e => setEeiData({ ...eeiData, portOfExport: e.target.value } })}
-                                className="input-field"
-                                placeholder="e.g. 2704 (LAX)"
+                                    onChange={e => setEeiData({ ...eeiData, portOfExport: e.target.value })}
+                                    className="input-field"
+                                    placeholder="e.g. 2704 (LAX)"
                                 />
                             </div>
                         </div>
@@ -128,8 +128,8 @@ export default function AESFilingWizard({ shipment, onClose, onFiled }) {
                                 <button
                                     onClick={() => setFilingMethod('carrier')}
                                     className={`p-4 rounded-lg border-2 text-left transition-all ${filingMethod === 'carrier'
-                                            ? 'border-purple-600 bg-purple-50'
-                                            : 'border-slate-200 hover:border-slate-300'
+                                        ? 'border-purple-600 bg-purple-50'
+                                        : 'border-slate-200 hover:border-slate-300'
                                         }`}
                                 >
                                     <div className="font-bold text-slate-900 mb-1">Carrier Integrated</div>
@@ -138,8 +138,8 @@ export default function AESFilingWizard({ shipment, onClose, onFiled }) {
                                 <button
                                     onClick={() => setFilingMethod('direct')}
                                     className={`p-4 rounded-lg border-2 text-left transition-all ${filingMethod === 'direct'
-                                            ? 'border-purple-600 bg-purple-50'
-                                            : 'border-slate-200 hover:border-slate-300'
+                                        ? 'border-purple-600 bg-purple-50'
+                                        : 'border-slate-200 hover:border-slate-300'
                                         }`}
                                 >
                                     <div className="font-bold text-slate-900 mb-1">CBP AES Direct</div>
@@ -185,7 +185,7 @@ export default function AESFilingWizard({ shipment, onClose, onFiled }) {
                                 Instructions
                             </h4>
                             <ol className="list-decimal list-inside text-sm text-amber-800 space-y-1">
-                                <li>Log in to the <a href="https://ace.cbp.dhs.gov/" target="_blank" className="underline font-medium">ACE Portal</a>.</li>
+                                <li>Log in to the <a href="https://ace.cbp.dhs.gov/" target="_blank" rel="noopener noreferrer" className="underline font-medium">ACE Portal</a>.</li>
                                 <li>Navigate to AES Direct.</li>
                                 <li>Create a new shipment.</li>
                                 <li>Copy the data below or upload if supported.</li>

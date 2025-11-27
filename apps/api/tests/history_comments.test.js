@@ -1,9 +1,20 @@
-// Set env vars before requiring app
-process.env.REDIS_HOST = 'localhost';
-process.env.REDIS_PORT = '6379';
-process.env.STORAGE_PATH = '/tmp/storage';
-process.env.AUTH_SECRET = 'test-secret';
-process.env.PORT = '3003';
+// Mock env validation
+jest.mock('../src/config/env', () => ({
+    validateEnv: () => ({
+        port: 3003,
+        storagePath: '/tmp/storage',
+        authSecret: 'test-secret',
+        redis: { host: 'localhost', port: 6379 },
+        nodeEnv: 'test'
+    })
+}));
+
+// Mock nodemailer
+jest.mock('nodemailer', () => ({
+    createTransporter: jest.fn().mockReturnValue({
+        sendMail: jest.fn().mockResolvedValue(true)
+    })
+}));
 
 const request = require('supertest');
 const app = require('../src/index');
@@ -41,34 +52,6 @@ jest.mock('@prisma/client', () => {
 
 // Mock queue module
 jest.mock('../src/queue', () => {
-    // We need to return the SAME mock object if possible, or a compatible one.
-    // Since we can't easily share variables across hoisted mocks, we'll create a new one.
-    // This implies that if the app uses `queue.prisma` and `authService.prisma`, they will be DIFFERENT objects.
-    // This might be okay if we mock the methods on both, or if we don't care about identity equality.
-    // However, the test uses `require('../src/queue').prisma` to assert.
-    // If `authService` uses a different mock, assertions on `queue.prisma` won't catch calls made via `authService`.
-
-    // BUT `authService` is used for login/register.
-    // `routes/documents.js` uses `prisma` from `../queue`.
-    // So assertions on `queue.prisma` WILL work for document operations.
-    // Assertions on `authService` operations (user creation) might be missed if we check `queue.prisma`.
-
-    // To fix this, we can make `queue` export the SAME instance as `@prisma/client`.
-    // We can require `@prisma/client` inside the `queue` mock factory!
-
-    const { PrismaClient } = jest.requireActual('@prisma/client'); // This would get the REAL one if not mocked? 
-    // No, `jest.requireActual` bypasses mocks.
-    // We want the MOCKED one.
-    // But `require` inside factory is allowed.
-
-    // Let's try to require the mocked @prisma/client
-    // const { PrismaClient } = require('@prisma/client'); 
-    // const prisma = new PrismaClient();
-
-    // But `require` might not return the mock if it's not fully registered yet?
-    // Jest mocks are registered before execution.
-
-    // Let's try:
     const mockPrisma = {
         auditLog: {
             findMany: jest.fn(),

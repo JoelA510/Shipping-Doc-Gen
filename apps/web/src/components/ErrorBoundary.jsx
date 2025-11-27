@@ -19,7 +19,7 @@ class ErrorBoundary extends React.Component {
             return (
                 <div style={{ padding: '20px', textAlign: 'center' }}>
                     <h1>Something went wrong</h1>
-                    <p>We're sorry for the inconvenience. Please try refreshing the page.</p>
+                    <p>We&apos;re sorry for the inconvenience. Please try refreshing the page.</p>
                     {process.env.NODE_ENV !== 'production' && (
                         <details style={{ marginTop: '20px', textAlign: 'left' }}>
                             <summary>Error Details (Dev Only)</summary>

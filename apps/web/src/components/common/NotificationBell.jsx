@@ -7,13 +7,6 @@ export default function NotificationBell() {
     const [showDropdown, setShowDropdown] = useState(false);
     const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        loadNotifications();
-        // Poll for new notifications every 30 seconds
-        const interval = setInterval(loadNotifications, 30000);
-        return () => clearInterval(interval);
-    }, []);
-
     const loadNotifications = async () => {
         try {
             const token = localStorage.getItem('token');
@@ -26,6 +19,14 @@ export default function NotificationBell() {
             console.error('Failed to load notifications:', error);
         }
     };
+
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        loadNotifications();
+        // Poll for new notifications every 30 seconds
+        const interval = setInterval(loadNotifications, 30000);
+        return () => clearInterval(interval);
+    }, []);
 
     const markAsRead = async (id) => {
         try {

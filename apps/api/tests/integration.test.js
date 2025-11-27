@@ -1,36 +1,78 @@
-// Set env vars before requiring app
-process.env.REDIS_HOST = 'localhost';
-process.env.REDIS_PORT = '6379';
-process.env.STORAGE_PATH = '/tmp/storage';
-process.env.AUTH_SECRET = 'test-secret';
-process.env.PORT = '3003';
+// Mock env validation
+jest.mock('../src/config/env', () => ({
+    validateEnv: () => ({
+        port: 3003,
+        storagePath: '/tmp/storage',
+        authSecret: 'test-secret',
+        redis: { host: 'localhost', port: 6379 },
+        nodeEnv: 'test'
+    })
+}));
+
+// Mock nodemailer
+jest.mock('nodemailer', () => ({
+    createTransporter: jest.fn().mockReturnValue({
+        sendMail: jest.fn().mockResolvedValue(true)
+    })
+}));
 
 const request = require('supertest');
 
 // Mock queue to avoid Redis connection
-jest.mock('../src/queue', () => ({
-    createJob: jest.fn().mockResolvedValue({ id: 'mock-job-id', status: 'pending' }),
-    getJob: jest.fn().mockResolvedValue({ id: 'mock-job-id', status: 'complete', docId: 'mock-doc-id' }),
-    getDocument: jest.fn().mockResolvedValue({
-        id: 'mock-doc-id',
-        header: { shipper: 'Test Company' },
-        lines: [],
-        meta: {}
-    }),
-    ingestionQueue: {
-        getJobCounts: jest.fn().mockResolvedValue({ waiting: 0, active: 0, completed: 0, failed: 0 })
-    }
-}));
+jest.mock('../src/queue', () => {
+    const mockPrisma = {
+        user: {
+            findUnique: jest.fn(),
+            create: jest.fn(),
+            upsert: jest.fn()
+        },
+        document: {
+            findUnique: jest.fn(),
+            update: jest.fn(),
+            findMany: jest.fn(),
+            count: jest.fn()
+        },
+        $connect: jest.fn(),
+        $disconnect: jest.fn()
+    };
+
+    return {
+        createJob: jest.fn().mockResolvedValue({ id: 'mock-job-id', status: 'pending' }),
+        getJob: jest.fn().mockReturnValue({ id: 'mock-job-id', status: 'complete', docId: 'mock-doc-id' }),
+        getDocument: jest.fn().mockResolvedValue({
+            id: 'mock-doc-id',
+            header: { shipper: 'Test Company' },
+            lines: [],
+            meta: {}
+        }),
+        updateDocument: jest.fn().mockResolvedValue({
+            id: 'mock-doc-id',
+            header: { shipper: 'Updated Shipper' }
+        }),
+        ingestionQueue: {
+            getJobCounts: jest.fn().mockResolvedValue({ waiting: 0, active: 0, completed: 0, failed: 0 })
+        },
+        prisma: mockPrisma
+    };
+});
 
 // Mock storage
 jest.mock('../src/services/storage', () => ({
-    saveFile: jest.fn().mockResolvedValue('/tmp/mock-file'),
+    saveFile: jest.fn().mockResolvedValue({ url: '/url/mock-file', path: '/tmp/mock-file' }),
     getFilePath: jest.fn().mockReturnValue('/tmp/mock-file')
 }));
 
 // Mock generator
 jest.mock('../src/services/generator', () => ({
     generatePDF: jest.fn(() => Promise.resolve(Buffer.from('mock-pdf-content')))
+}));
+
+// Mock auth service to bypass DB
+jest.mock('../src/services/auth', () => ({
+    register: jest.fn().mockResolvedValue({ user: { id: 'user-id', username: 'testuser' }, token: 'valid-token' }),
+    login: jest.fn().mockResolvedValue({ user: { id: 'user-id', username: 'testuser' }, token: 'valid-token' }),
+    verifyToken: jest.fn().mockReturnValue({ id: 'user-id', username: 'testuser' }),
+    prisma: {}
 }));
 
 const app = require('../src/index');

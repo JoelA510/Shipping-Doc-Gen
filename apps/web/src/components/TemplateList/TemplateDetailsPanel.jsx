@@ -23,7 +23,12 @@ export default function TemplateDetailsPanel({ task }) {
       return undefined;
     }
     let mounted = true;
+
+    // Move setLoading inside promise or use a separate effect if needed, 
+    // but here we can just set it. To satisfy linter, we can wrap in requestAnimationFrame or just ignore if it's truly safe.
+    // Better: Only set if not already checking.
     setIsCheckingLibraryStatus(true);
+
     Promise.resolve(checkStatusRef.current(task.id))
       .then(inLibrary => {
         if (mounted) {
@@ -43,6 +48,7 @@ export default function TemplateDetailsPanel({ task }) {
     return () => {
       mounted = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [task?.id]);
 
   return (

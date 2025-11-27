@@ -2,10 +2,18 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const { requireAuth } = require('./middleware/auth');
 const uploadRouter = require('./routes/upload');
 const documentsRouter = require('./routes/documents');
 const statusRouter = require('./routes/status');
+const authRouter = require('./routes/auth');
+const metricsRouter = require('./routes/metrics');
+const complianceRouter = require('./routes/compliance');
+const templatesRouter = require('./routes/templates');
+const notificationsRouter = require('./routes/notifications');
+const carriersRouter = require('./routes/carriers');
 const port = process.env.PORT || 3001;
+const app = express();
 
 // Security middleware
 app.use(helmet());
