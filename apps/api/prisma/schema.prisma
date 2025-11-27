@@ -27,6 +27,7 @@ model User {
   auditLogs     AuditLog[]
   templates     DocumentTemplate[]
   notifications Notification[]
+  carrierAccounts CarrierAccount[]
 }
 
 model Document {
@@ -45,6 +46,7 @@ model Document {
   comments      Comment[]
   auditLogs     AuditLog[]
   notifications Notification[]
+  shipments     Shipment[]
 }
 
 model Comment {
@@ -103,4 +105,46 @@ model Notification {
   
   user     User      @relation(fields: [userId], references: [id])
   document Document? @relation(fields: [documentId], references: [id])
+}
+
+model CarrierAccount {
+  id            String   @id @default(uuid())
+  userId        String
+  provider      String   // "fedex", "ups"
+  accountNumber String   // Encrypted
+  credentials   String   // JSON (Encrypted API Keys/Secrets)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Shipment {
+  id             String   @id @default(uuid())
+  documentId     String?
+  carrier        String
+  serviceType    String
+  trackingNumber String
+  labelUrl       String?
+  cost           Float?
+  status         String   // created, picked_up, in_transit, delivered, cancelled
+  aesNumber      String?  // ITN
+  pickupId       String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  document Document? @relation(fields: [documentId], references: [id])
+}
+
+model PickupRequest {
+  id             String   @id @default(uuid())
+  carrier        String
+  confirmation   String
+  scheduledDate  DateTime
+  windowStart    String
+  windowEnd      String
+  status         String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
