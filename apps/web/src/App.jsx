@@ -4,6 +4,7 @@ import { LogOut, Ship, FileText } from 'lucide-react';
 import UploadZone from './components/upload/UploadZone';
 import DocumentReview from './components/review/DocumentReview';
 import Login from './components/auth/Login';
+import NotificationBell from './components/common/NotificationBell';
 import { api } from './services/api';
 
 function App() {
@@ -55,13 +56,14 @@ function App() {
                         <h1 className="text-xl font-bold text-slate-900 tracking-tight">Shipping Doc Gen</h1>
                     </div>
 
-                    <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-4">
                         <div className="flex items-center gap-3 px-4 py-2 bg-slate-50 rounded-full border border-slate-100">
                             <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center text-primary-700 font-semibold text-sm">
                                 {user.username.charAt(0).toUpperCase()}
                             </div>
                             <span className="text-sm font-medium text-slate-700">{user.username}</span>
                         </div>
+                        <NotificationBell />
                         <button
                             onClick={handleLogout}
                             className="text-slate-500 hover:text-red-600 transition-colors p-2 hover:bg-red-50 rounded-full"
