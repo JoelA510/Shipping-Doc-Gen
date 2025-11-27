@@ -7,6 +7,7 @@ generator client {
 
 datasource db {
   provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -91,6 +92,8 @@ model DocumentTemplate {
   updatedAt   DateTime @updatedAt
   
   user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }
 
 model Notification {
@@ -105,6 +108,8 @@ model Notification {
   
   user     User      @relation(fields: [userId], references: [id])
   document Document? @relation(fields: [documentId], references: [id])
+
+  @@index([userId])
 }
 
 model CarrierAccount {
@@ -118,6 +123,8 @@ model CarrierAccount {
   updatedAt     DateTime @updatedAt
   
   user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }
 
 model Shipment {
@@ -135,6 +142,8 @@ model Shipment {
   updatedAt      DateTime @updatedAt
   
   document Document? @relation(fields: [documentId], references: [id])
+
+  @@index([documentId])
 }
 
 model PickupRequest {

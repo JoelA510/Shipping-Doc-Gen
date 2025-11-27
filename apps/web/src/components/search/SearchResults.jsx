@@ -63,8 +63,10 @@ export default function SearchResults() {
               if (typeof ref === 'function') {
                 ref(node);
               } else if (ref) {
+                // eslint-disable-next-line react-hooks/rules-of-hooks
                 ref.current = node;
               }
+              // eslint-disable-next-line react-hooks/rules-of-hooks
               outerRef.current = node;
             }}
             role="list"

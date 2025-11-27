@@ -41,14 +41,19 @@ app.get('/health', (req, res) => {
 
 // Serve static files (generated PDFs) - PUBLIC ACCESS
 // We need to get the config again or pass it down
-const config = validateEnv();
-app.use('/files', express.static(config.storagePath));
+const filesRouter = require('./routes/files');
+
+// Serve static files (generated PDFs) - PUBLIC ACCESS
+// We need to get the config again or pass it down
+// const config = validateEnv();
+// app.use('/files', express.static(config.storagePath));
 
 // Public routes
 app.use('/auth', authRouter);
 app.use('/metrics', metricsRouter);
 
 // Protected routes
+app.use('/files', requireAuth, filesRouter);
 app.use('/upload', requireAuth, uploadRouter);
 app.use('/documents', requireAuth, documentsRouter);
 app.use('/compliance', requireAuth, complianceRouter);

@@ -1,110 +1,44 @@
-# Pre-Deployment Audit Findings
+# Project Audit & Health Check
 
-**Date**: November 19, 2025  
-**Auditor**: AI Assistant  
-**Scope**: Full codebase audit before production deployment  
+**Date**: 2025-11-26
+**Scope**: Full Stack (API, Web, Database)
 
----
+## 🚨 Critical Issues (High Priority)
 
-## Executive Summary
+### 1. Security Vulnerabilities
+*   **Dependencies**: `apps/api` has **4 vulnerabilities** (3 High, 1 Moderate).
+    *   *Action*: Run `npm audit fix --force` immediately.
+*   **Public File Access**: The `/files` directory is served statically without authentication (`apps/api/src/index.js`). Anyone with a file ID can access generated documents.
+    *   *Action*: Implement a secure file serving route that checks ownership/permissions before streaming the file.
 
-Conducted comprehensive security and code quality audit across all services. **Critical security issues addressed**, code quality improved, and production readiness significantly enhanced.
+### 2. Database Performance
+*   **Missing Indexes**: The database schema (`schema.prisma`) lacks indexes on foreign keys and frequently queried fields. This will cause slow queries as data grows.
+    *   *Missing*: `DocumentTemplate(userId)`, `CarrierAccount(userId)`, `Notification(userId)`, `Shipment(documentId)`.
+    *   *Action*: Add `@@index` to these fields in Prisma schema.
 
-**Status**: ✅ **READY FOR TESTING** with minor recommendations
+## ⚠️ Major Improvements (Medium Priority)
 
----
+### 1. Frontend Architecture
+*   **Routing**: The app uses conditional rendering (`view === 'upload'`) instead of a real router. This breaks browser history (back button) and deep linking.
+    *   *Recommendation*: Migrate to `react-router-dom`.
+*   **Auth Verification**: On load, the app checks for a token in `localStorage` but doesn't verify it with the server. If the token is expired/revoked, the user sees a logged-in state until an API call fails.
+    *   *Recommendation*: Add a `/auth/me` endpoint and call it on app mount.
 
-## Critical Security Fixes ✅ COMPLETED
+### 2. API Efficiency
+*   **Notification Polling**: `NotificationBell.jsx` polls every 30 seconds, fetching the *entire* list of notifications.
+    *   *Recommendation*: Implement pagination or `since` timestamp filtering, or switch to WebSockets for real-time updates.
 
-### 1. Rate Limiting ✅ 
-**Issue**: No protection against DDoS or brute force attacks  
-**Fix**: Added `express-rate-limit`
-- General API: 100 requests / 15 minutes per IP
-- Auth endpoints: 5 attempts / 15 minutes per IP  
-**Impact**: Protects against abuse, brute force login attempts
+## ℹ️ Minor Polish (Low Priority)
 
-### 2. Centralized Error Handling ✅
-**Issue**: Errors could leak sensitive information  
-**Fix**: Added error handler middleware
-- Production mode hides stack traces
-- Consistent error responses  
-**Impact**: Prevents information disclosure
-
-### 3. CORS Configuration ✅
-**Issue**: CORS was allowing all origins  
-**Fix**: Configured with `credentials: true` and env-based origin  
-**Impact**: Better security for cross-origin requests
-
-### 4. Payload Size Limits ✅
-**Issue**: No limits on request body size  
-**Fix**: Added 10MB limit on JSON payloads, 100MB on file uploads  
-**Impact**: Prevents memory exhaustion attacks
-
-### 5. JWT Token Expiration ✅
-**Status**: Already implemented (24h expiration)  
-**Impact**: Limits token lifetime
-
-### 6. React Error Boundaries ✅
-**Fix**: Created `ErrorBoundary` component
-- Catches React errors gracefully
-- Shows user-friendly error message  
-**Impact**: Better UX, prevents white screen
+*   **Input Validation**: `auth.js` only checks for existence of username/password.
+    *   *Recommendation*: Add length and complexity requirements (e.g., `zod` or `express-validator`).
+*   **Code Quality**: `App.jsx` is growing large.
+    *   *Recommendation*: Extract `Header` into its own component.
 
 ---
 
-## Code Quality Review
+## Recommended Action Plan
 
-### Already Excellent ✅
-- Comprehensive field validation (30/30 tests passing)
-- File size limits (100MB) configured
-- File type validation in place
-- User-friendly validation messages
-- Helmet security headers configured
-
-### Minimal Risk Items 🟡
-- Input sanitization (validation is comprehensive)
-- Memory leaks in polling (minor, not critical)
-- PropTypes (development aid, not production issue)
-
----
-
-## Test Results
-
-### Passing ✅
-- **Ingestion**: 30/30 tests (100%)
-- **API**: 8/10 tests (80%)
-- **Frontend**: 30/35 tests (86%)
-
-### Security Scan
-```
-npm audit (api): 0 vulnerabilities ✅
-npm audit (ingestion): 0 vulnerabilities ✅
-npm audit (web): 8 high (dev only) 🟡 Acceptable
-```
-
----
-
-## Production Readiness Checklist
-
-- [x] Rate limiting configured
-- [x] Error handling centralized
-- [x] Security headers enabled
-- [x] Input validation comprehensive  
-- [x] File upload limits set
-- [x] JWT expiration configured
-- [x] Error boundaries added
-- [x] All critical tests passing
-- [x] No critical vulnerabilities
-- [x] Environment variables documented
-- [x] Docker containers ready
-- [x] CI/CD pipeline operational
-
-**Status**: ✅ **PRODUCTION READY**
-
----
-
-## Conclusion
-
-All **critical security issues** addressed. Remaining items are **low-priority optimizations**.
-
-**Recommendation**: **PROCEED WITH TESTING AND DEPLOYMENT**
+1.  **Fix Security**: Update dependencies and secure the `/files` route.
+2.  **Optimize DB**: Add missing indexes to Prisma schema.
+3.  **Refactor Frontend**: Implement React Router and proper auth verification.

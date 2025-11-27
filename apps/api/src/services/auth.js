@@ -1,13 +1,11 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const { PrismaClient } = require('@prisma/client');
-
-const prisma = new PrismaClient();
-const SECRET_KEY = process.env.AUTH_SECRET || 'default-secret-key';
+const { prisma } = require('../queue'); // Use shared instance
 
 // Helper to generate token
 const generateToken = (user) => {
-    return jwt.sign({ id: user.id, username: user.username, role: user.role }, SECRET_KEY, { expiresIn: '24h' });
+    const secret = process.env.AUTH_SECRET || 'default-secret-key';
+    return jwt.sign({ id: user.id, username: user.username, role: user.role }, secret, { expiresIn: '24h' });
 };
 
 // Register new user
@@ -58,7 +56,8 @@ const login = async (username, password) => {
 // Verify token middleware
 const verifyToken = (token) => {
     try {
-        return jwt.verify(token, SECRET_KEY);
+        const secret = process.env.AUTH_SECRET || 'default-secret-key';
+        return jwt.verify(token, secret);
     } catch (err) {
         throw new Error('Invalid token');
     }
