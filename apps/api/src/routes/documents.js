@@ -2,24 +2,53 @@ const express = require('express');
 const router = express.Router();
 const { getJob, getDocument, updateDocument, prisma } = require('../queue');
 
-// Get all documents (with pagination)
+// Get all documents (with pagination and filters)
 router.get('/', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 20;
         const skip = (page - 1) * limit;
 
+        // Build filter conditions
+        const where = {};
+
+        // Date range filter
+        if (req.query.startDate || req.query.endDate) {
+            where.createdAt = {};
+            if (req.query.startDate) {
+                where.createdAt.gte = new Date(req.query.startDate);
+            }
+            if (req.query.endDate) {
+                const endDate = new Date(req.query.endDate);
+                endDate.setHours(23, 59, 59, 999); // End of day
+                where.createdAt.lte = endDate;
+            }
+        }
+
+        // Status filter
+        if (req.query.status) {
+            where.status = req.query.status;
+        }
+
+        // Filename search (simple text contains)
+        if (req.query.search) {
+            where.filename = {
+                contains: req.query.search
+            };
+        }
+
         const [docs, total] = await Promise.all([
             prisma.document.findMany({
+                where,
                 skip,
                 take: limit,
                 orderBy: { createdAt: 'desc' }
             }),
-            prisma.document.count()
+            prisma.document.count({ where })
         ]);
 
-        // Parse JSON fields
-        const parsedDocs = docs.map(doc => ({
+        // Parse JSON fields and apply post-query filters
+        let parsedDocs = docs.map(doc => ({
             ...doc,
             header: doc.header ? JSON.parse(doc.header) : null,
             lines: doc.lines ? JSON.parse(doc.lines) : [],
@@ -28,6 +57,23 @@ router.get('/', async (req, res) => {
             meta: doc.meta ? JSON.parse(doc.meta) : null,
         }));
 
+        // Value range filter (post-query since totalValue is in JSON)
+        if (req.query.minValue || req.query.maxValue) {
+            parsedDocs = parsedDocs.filter(doc => {
+                const totalValue = doc.header?.totalValue || 0;
+                const min = req.query.minValue ? parseFloat(req.query.minValue) : -Infinity;
+                const max = req.query.maxValue ? parseFloat(req.query.maxValue) : Infinity;
+                return totalValue >= min && totalValue <= max;
+            });
+        }
+
+        // Carrier filter (post-query based on meta)
+        if (req.query.carrier) {
+            parsedDocs = parsedDocs.filter(doc => {
+                return doc.meta?.carrier === req.query.carrier;
+            });
+        }
+
         res.json({
             data: parsedDocs,
             pagination: {
@@ -35,6 +81,15 @@ router.get('/', async (req, res) => {
                 limit,
                 total,
                 pages: Math.ceil(total / limit)
+            },
+            filters: {
+                search: req.query.search,
+                status: req.query.status,
+                startDate: req.query.startDate,
+                endDate: req.query.endDate,
+                minValue: req.query.minValue,
+                maxValue: req.query.maxValue,
+                carrier: req.query.carrier
             }
         });
     } catch (error) {
