@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, ArrowLeft, Edit2, AlertTriangle, X, Plus, Trash2 } from 'lucide-react';
+import { Save, ArrowLeft, Edit2, AlertTriangle, X, Plus, Trash2, BookmarkPlus } from 'lucide-react';
 import { api, API_URL } from '../../services/api';
 import EditableField from '../common/EditableField';
 import Comments from './Comments';
@@ -98,6 +98,38 @@ export default function DocumentReview({ document, onBack, user }) {
         );
     };
 
+    const handleSaveAsTemplate = async () => {
+        const templateName = prompt('Enter template name:');
+        if (!templateName) return;
+
+        const templateDescription = prompt('Enter description (optional):');
+
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch('/templates', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: templateName,
+                    description: templateDescription || '',
+                    header: doc.header
+                })
+            });
+
+            if (res.ok) {
+                setMessage({ type: 'success', text: 'Template saved successfully' });
+            } else {
+                throw new Error('Failed to save template');
+            }
+        } catch (err) {
+            setMessage({ type: 'error', text: `Template save failed: ${err.message}` });
+        }
+    };
+
+
     const handleSave = async () => {
         setIsSaving(true);
         setMessage(null);
@@ -161,6 +193,13 @@ export default function DocumentReview({ document, onBack, user }) {
                             >
                                 <Edit2 className="w-4 h-4" />
                                 Edit Mode
+                            </button>
+                            <button
+                                onClick={handleSaveAsTemplate}
+                                className="btn-secondary flex items-center gap-2 border-purple-300 text-purple-700 hover:bg-purple-50"
+                            >
+                                <BookmarkPlus className="w-4 h-4" />
+                                Save as Template
                             </button>
                             <select
                                 value={selectedTemplate}
