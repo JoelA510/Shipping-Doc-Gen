@@ -7,6 +7,7 @@ const documentsRouter = require('./routes/documents');
 const statusRouter = require('./routes/status');
 const metricsRouter = require('./routes/metrics');
 const authRouter = require('./routes/auth');
+const complianceRouter = require('./routes/compliance');
 const { validateEnv } = require('./config/env');
 const { requireAuth } = require('./middleware/auth');
 
@@ -65,6 +66,7 @@ app.use('/metrics', metricsRouter);
 // Protected routes
 app.use('/upload', requireAuth, uploadRouter);
 app.use('/documents', requireAuth, documentsRouter);
+app.use('/compliance', requireAuth, complianceRouter);
 app.use('/', requireAuth, statusRouter);
 
 // 404 handler

@@ -60,3 +60,11 @@ model AuditLog {
   user     User?     @relation(fields: [userId], references: [id])
   document Document? @relation(fields: [documentId], references: [id])
 }
+
+model HtsCode {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  description String
+  unit        String?
+  updatedAt   DateTime @updatedAt
+}
