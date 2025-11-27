@@ -1,5 +1,5 @@
 {
-    "name": "@shipping-doc-gen/api",
+    "name": "@formwaypoint/api",
     "version": "0.1.0",
     "private": true,
     "scripts": {
@@ -10,7 +10,7 @@
     "dependencies": {
         "@aws-sdk/client-s3": "^3.940.0",
         "@prisma/client": "^7.0.1",
-        "@shipping-doc-gen/ingestion": "file:../../services/ingestion",
+        "@formwaypoint/ingestion": "file:../../services/ingestion",
         "adm-zip": "^0.5.16",
         "bcryptjs": "^3.0.3",
         "bullmq": "^5.63.2",

@@ -1,6 +1,6 @@
-# Shipping-Doc-Gen
+# FormWaypoint
 
-Shipping documentation automation platform that converts diverse Commercial Invoices & Packing Lists (CIPL) into canonical shipment data and produces compliant SLI/BOL outputs.
+FormWaypoint is a shipping documentation automation platform that converts diverse Commercial Invoices & Packing Lists (CIPL) into canonical shipment data and produces compliant SLI/BOL outputs.
 
 ## Monorepo Layout
 - `apps/web` – Next.js 15 + React 19 client for upload, review, and export workflows.
