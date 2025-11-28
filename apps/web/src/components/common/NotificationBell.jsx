@@ -96,7 +96,7 @@ export default function NotificationBell() {
                                                 </p>
                                             </div>
                                         </div>
-                                    </div>
+                                    </button>
                                 ))
                             )}
                         </div>
