@@ -52,6 +52,7 @@ const Layout = ({ user, onLogout, children }) => {
                             onClick={onLogout}
                             className="text-slate-500 hover:text-red-600 transition-colors p-2 hover:bg-red-50 rounded-full"
                             title="Logout"
+                            aria-label="Logout"
                         >
                             <LogOut className="w-5 h-5" />
                         </button>

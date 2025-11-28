@@ -49,6 +49,7 @@ export default function NotificationBell() {
                 onClick={() => setShowDropdown(!showDropdown)}
                 className="relative p-2 hover:bg-slate-100 rounded-full transition-colors"
                 title="Notifications"
+                aria-label="Notifications"
             >
                 <Bell className="w-5 h-5 text-slate-600" />
                 {unreadCount > 0 && (
@@ -78,10 +79,10 @@ export default function NotificationBell() {
                                 </div>
                             ) : (
                                 notifications.map((notification) => (
-                                    <div
+                                    <button
                                         key={notification.id}
                                         onClick={() => markAsRead(notification.id)}
-                                        className={`p-4 border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition ${!notification.read ? 'bg-purple-50/50' : ''
+                                        className={`w-full text-left p-4 border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition ${!notification.read ? 'bg-purple-50/50' : ''
                                             }`}
                                     >
                                         <div className="flex items-start gap-3">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 
 export default function EditableField({
     value,
@@ -9,6 +9,7 @@ export default function EditableField({
     className = ''
 }) {
     const [localValue, setLocalValue] = useState(value);
+    const inputId = useId();
 
     useEffect(() => {
         setLocalValue(value);
@@ -25,7 +26,7 @@ export default function EditableField({
     if (!isEditing) {
         return (
             <div className={className}>
-                {label && <label className="block text-xs font-medium text-slate-500 mb-1 uppercase tracking-wider">{label}</label>}
+                {label && <div className="block text-xs font-medium text-slate-500 mb-1 uppercase tracking-wider">{label}</div>}
                 <div className="font-medium text-slate-900 min-h-[1.5rem] truncate" title={value}>
                     {value || <span className="text-slate-300 italic">Empty</span>}
                 </div>
@@ -35,8 +36,9 @@ export default function EditableField({
 
     return (
         <div className={className}>
-            {label && <label className="block text-xs font-medium text-slate-500 mb-1 uppercase tracking-wider">{label}</label>}
+            {label && <label htmlFor={inputId} className="block text-xs font-medium text-slate-500 mb-1 uppercase tracking-wider">{label}</label>}
             <input
+                id={inputId}
                 type={type}
                 value={localValue || ''}
                 onChange={handleChange}
