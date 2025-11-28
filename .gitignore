@@ -48,3 +48,6 @@ venv/
 match_files.ps1
 *.db
 *.sqlite
+
+# Generated Output
+/Output/*

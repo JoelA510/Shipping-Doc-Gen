@@ -62,10 +62,11 @@ export default function NotificationBell() {
             <AnimatePresence>
                 {showDropdown && (
                     <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-2xl border border-slate-200 z-50"
+                        initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
+                        className="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden"
                     >
                         <div className="p-4 border-b border-slate-200">
                             <h3 className="font-semibold text-slate-900">Notifications</h3>
@@ -82,7 +83,7 @@ export default function NotificationBell() {
                                     <button
                                         key={notification.id}
                                         onClick={() => markAsRead(notification.id)}
-                                        className={`w-full text-left p-4 border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition ${!notification.read ? 'bg-purple-50/50' : ''
+                                        className={`w-full text-left p-4 border-b border-slate-50 hover:bg-slate-50/80 cursor-pointer transition-colors duration-200 ${!notification.read ? 'bg-purple-50/40' : ''
                                             }`}
                                     >
                                         <div className="flex items-start gap-3">

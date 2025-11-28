@@ -8,6 +8,11 @@
 
 ---
 
+## Status Update (2025-11-28)
+**All P0 and P1 issues have been resolved.** A visual polish pass (P2) has been completed for all major surfaces, improving shadows, transitions, and component states.
+
+---
+
 ## Global & Shared Components
 
 ### Layout (`apps/web/src/App.jsx`)

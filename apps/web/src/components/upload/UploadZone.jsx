@@ -73,13 +73,13 @@ export default function UploadZone({ onDocumentUploaded }) {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 className={`
-                    relative rounded-2xl border-2 border-dashed transition-all duration-200 p-12
+                    relative rounded-2xl border-2 border-dashed transition-all duration-300 p-12
                     flex flex-col items-center justify-center text-center bg-white
                     ${isDragging
-                        ? 'border-primary-500 bg-primary-50 scale-[1.02] shadow-lg'
-                        : 'border-slate-300 hover:border-primary-400 hover:bg-slate-50'
+                        ? 'border-primary-500 bg-primary-50/50 scale-[1.02] shadow-xl shadow-primary-500/10'
+                        : 'border-slate-300 hover:border-primary-400 hover:bg-slate-50/50'
                     }
-                    ${status === 'error' ? 'border-red-300 bg-red-50' : ''}
+                    ${status === 'error' ? 'border-red-300 bg-red-50/50' : ''}
                 `}
                 onDragOver={onDragOver}
                 onDragLeave={onDragLeave}

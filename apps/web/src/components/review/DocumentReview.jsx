@@ -169,7 +169,7 @@ export default function DocumentReview({ document, onBack, user }) {
     return (
         <div className="space-y-6">
             {/* Sticky Header Actions */}
-            <div className="sticky top-20 z-40 bg-white/80 backdrop-blur-md border border-slate-200 shadow-sm rounded-xl p-4 flex justify-between items-center">
+            <div className="sticky top-20 z-40 bg-white/90 backdrop-blur-md border border-slate-200/60 shadow-sm rounded-xl p-4 flex justify-between items-center transition-all duration-200">
                 <div className="flex items-center gap-4">
                     <button
                         onClick={onBack}
@@ -385,20 +385,20 @@ export default function DocumentReview({ document, onBack, user }) {
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm">
-                                <thead className="bg-slate-50 text-slate-500 font-medium">
+                                <thead className="bg-slate-50/50 text-slate-500 font-medium border-b border-slate-100">
                                     <tr>
-                                        <th className="p-4">Part #</th>
-                                        <th className="p-4">Description</th>
-                                        <th className="p-4 text-right">Qty</th>
-                                        <th className="p-4 text-right">Weight (kg)</th>
-                                        <th className="p-4 text-right">Value (USD)</th>
-                                        <th className="p-4">HTS</th>
-                                        <th className="p-4">COO</th>
+                                        <th className="p-4 font-semibold">Part #</th>
+                                        <th className="p-4 font-semibold">Description</th>
+                                        <th className="p-4 text-right font-semibold">Qty</th>
+                                        <th className="p-4 text-right font-semibold">Weight (kg)</th>
+                                        <th className="p-4 text-right font-semibold">Value (USD)</th>
+                                        <th className="p-4 font-semibold">HTS</th>
+                                        <th className="p-4 font-semibold">COO</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100">
+                                <tbody className="divide-y divide-slate-50">
                                     {lines.map((line, i) => (
-                                        <tr key={i} className="hover:bg-slate-50 transition-colors">
+                                        <tr key={i} className="hover:bg-slate-50/80 transition-colors duration-150">
                                             <td className="p-4">
                                                 <EditableField value={line.partNumber} isEditing={isEditing} onChange={(val) => handleLineChange(i, 'partNumber', val)} />
                                             </td>

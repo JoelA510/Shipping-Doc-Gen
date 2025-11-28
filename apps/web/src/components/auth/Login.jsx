@@ -46,7 +46,7 @@ export default function Login({ onLogin }) {
                     <p className="text-slate-500 mt-2">Automate your shipping documentation workflow</p>
                 </div>
 
-                <div className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
+                <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 overflow-hidden">
                     <div className="p-8">
                         <h2 className="text-xl font-semibold text-slate-900 mb-6">
                             {isRegistering ? 'Create an account' : 'Welcome back'}
@@ -74,7 +74,7 @@ export default function Login({ onLogin }) {
                                         type="text"
                                         value={username}
                                         onChange={(e) => setUsername(e.target.value)}
-                                        className="input-field pl-10"
+                                        className="input-field pl-10 py-2.5 transition-all duration-200"
                                         placeholder="Enter your username"
                                         required
                                     />
@@ -92,7 +92,7 @@ export default function Login({ onLogin }) {
                                         type="password"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        className="input-field pl-10"
+                                        className="input-field pl-10 py-2.5 transition-all duration-200"
                                         placeholder="Enter your password"
                                         required
                                     />

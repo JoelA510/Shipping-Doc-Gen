@@ -73,7 +73,7 @@ export default function Comments({ documentId, user }) {
                                 {(comment.user?.username || 'U')[0].toUpperCase()}
                             </div>
                             <div className="flex-1">
-                                <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                                <div className="bg-slate-50 rounded-2xl rounded-tl-none p-3 border border-slate-100 shadow-sm">
                                     <div className="flex justify-between items-baseline mb-1">
                                         <span className="font-medium text-sm text-slate-900">
                                             {comment.user?.username || 'Unknown User'}
@@ -82,7 +82,7 @@ export default function Comments({ documentId, user }) {
                                             {new Date(comment.createdAt).toLocaleString()}
                                         </span>
                                     </div>
-                                    <p className="text-sm text-slate-700 whitespace-pre-wrap">{comment.text}</p>
+                                    <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{comment.text}</p>
                                 </div>
                             </div>
                         </div>
