@@ -99,11 +99,13 @@ export default function Comments({ documentId, user }) {
                         placeholder="Write a comment..."
                         className="flex-1 input-field text-sm"
                         disabled={isSending}
+                        aria-label="Write a comment"
                     />
                     <button
                         type="submit"
                         disabled={!newComment.trim() || isSending}
                         className="btn-primary p-2 aspect-square flex items-center justify-center"
+                        aria-label="Send comment"
                     >
                         <Send className="w-4 h-4" />
                     </button>

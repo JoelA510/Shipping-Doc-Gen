@@ -2,8 +2,8 @@
 
 | Priority | Count |
 | :--- | :--- |
-| **P0** | 5 |
-| **P1** | 1 |
+| **P0** | 0 |
+| **P1** | 0 |
 | **P2** | 0 |
 
 ---
@@ -35,17 +35,17 @@
 ### DocumentReview (`apps/web/src/components/review/DocumentReview.jsx`)
 - **Files**: `apps/web/src/components/review/DocumentReview.jsx`
 - **Issues**:
-    - `forms_labels_visible` (P0): Template selector, Reference Type/Value inputs have no associated labels (or no label at all).
+    - [FIXED] `forms_labels_visible` (P0): Template selector, Reference Type/Value inputs have no associated labels (or no label at all).
         - *Fix*: Add `aria-label` or associate visible labels with `htmlFor`.
-    - `keyboard_accessible` (P1): Back button and Remove Reference button rely on `title`.
+    - [FIXED] `keyboard_accessible` (P1): Back button and Remove Reference button rely on `title`.
         - *Fix*: Add `aria-label`.
 
 ### Comments (`apps/web/src/components/review/Comments.jsx`)
 - **Files**: `apps/web/src/components/review/Comments.jsx`
 - **Issues**:
-    - `forms_labels_visible` (P0): Comment input has no label, only placeholder.
+    - [FIXED] `forms_labels_visible` (P0): Comment input has no label, only placeholder.
         - *Fix*: Add a visually hidden label or `aria-label`.
-    - `keyboard_accessible` (P0): Send button has no text or `aria-label`.
+    - [FIXED] `keyboard_accessible` (P0): Send button has no text or `aria-label`.
         - *Fix*: Add `aria-label="Send comment"`.
 
 ### History (`apps/web/src/components/review/History.jsx`)
@@ -58,11 +58,11 @@
 ### UploadZone (`apps/web/src/components/upload/UploadZone.jsx`)
 - **Files**: `apps/web/src/components/upload/UploadZone.jsx`
 - **Issues**:
-    - `keyboard_accessible` (P0): File input is `hidden` (display: none), making it unreachable via keyboard.
+    - [FIXED] `keyboard_accessible` (P0): File input is `hidden` (display: none), making it unreachable via keyboard.
         - *Fix*: Use `sr-only` (screen reader only) class or `opacity-0` absolute positioning instead of `hidden`.
 
 ### Login (`apps/web/src/components/auth/Login.jsx`)
 - **Files**: `apps/web/src/components/auth/Login.jsx`
 - **Issues**:
-    - `forms_labels_visible` (P0): Inputs have visible labels but no `htmlFor`/`id` association.
+    - [FIXED] `forms_labels_visible` (P0): Inputs have visible labels but no `htmlFor`/`id` association.
         - *Fix*: Add `id` to inputs and `htmlFor` to labels.

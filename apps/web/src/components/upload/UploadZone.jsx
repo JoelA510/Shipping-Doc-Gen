@@ -101,10 +101,11 @@ export default function UploadZone({ onDocumentUploaded }) {
                         <div className="relative">
                             <input
                                 type="file"
-                                className="hidden"
+                                className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10"
                                 onChange={(e) => e.target.files[0] && handleFile(e.target.files[0])}
                                 id="file-upload"
                                 accept=".pdf,.xlsx,.csv,.docx"
+                                aria-label="Upload document"
                             />
                             <label
                                 htmlFor="file-upload"

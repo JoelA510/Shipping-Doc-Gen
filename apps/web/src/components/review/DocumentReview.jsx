@@ -175,6 +175,7 @@ export default function DocumentReview({ document, onBack, user }) {
                         onClick={onBack}
                         className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors"
                         title="Back"
+                        aria-label="Back"
                     >
                         <ArrowLeft className="w-5 h-5" />
                     </button>
@@ -205,6 +206,7 @@ export default function DocumentReview({ document, onBack, user }) {
                                 value={selectedTemplate}
                                 onChange={(e) => setSelectedTemplate(e.target.value)}
                                 className="border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                                aria-label="Select export template"
                             >
                                 <option value="sli">Standard SLI</option>
                                 <option value="nippon">Nippon Express</option>
@@ -324,6 +326,7 @@ export default function DocumentReview({ document, onBack, user }) {
                                             onClick={() => handleRemoveReference(idx)}
                                             className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded"
                                             title="Remove reference"
+                                            aria-label={`Remove reference ${ref.type} ${ref.value}`}
                                         >
                                             <Trash2 size={16} />
                                         </button>
@@ -339,8 +342,9 @@ export default function DocumentReview({ document, onBack, user }) {
                         {isEditing && (doc.references || []).length < 5 && (
                             <div className="flex gap-3 items-end border-t border-slate-100 pt-4 mt-4">
                                 <div className="w-32">
-                                    <label className="block text-xs font-medium text-slate-500 mb-1">Type</label>
+                                    <label htmlFor="new-ref-type" className="block text-xs font-medium text-slate-500 mb-1">Type</label>
                                     <select
+                                        id="new-ref-type"
                                         value={newRefType}
                                         onChange={(e) => setNewRefType(e.target.value)}
                                         className="input-field py-1.5 text-sm"
@@ -354,8 +358,9 @@ export default function DocumentReview({ document, onBack, user }) {
                                     </select>
                                 </div>
                                 <div className="flex-1">
-                                    <label className="block text-xs font-medium text-slate-500 mb-1">Value</label>
+                                    <label htmlFor="new-ref-value" className="block text-xs font-medium text-slate-500 mb-1">Value</label>
                                     <input
+                                        id="new-ref-value"
                                         type="text"
                                         value={newRefValue}
                                         onChange={(e) => setNewRefValue(e.target.value)}
