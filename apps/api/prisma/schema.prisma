@@ -30,6 +30,7 @@ model User {
   notifications Notification[]
   carrierAccounts CarrierAccount[]
   forwarderProfiles ForwarderProfile[]
+  erpExportConfigs ErpExportConfig[]
 }
 
 model Document {
@@ -167,6 +168,44 @@ model ForwarderProfile {
 
   user User @relation(fields: [userId], references: [id])
   @@index([userId])
+}
+
+// Epic 16: ERP Feedback Loop
+model ErpExportConfig {
+  id              String   @id @default(uuid())
+  userId          String
+  name            String
+  targetType      String   // "FILE", "HTTP"
+  format          String   // "CSV", "JSON"
+  destination     String   // File path template or HTTP URL
+  schedule        String?  // Cron expression or "MANUAL"
+  httpMethod      String?  // "POST", "PUT"
+  httpHeadersJson String?  // JSON string
+  
+  updatedAt       DateTime @updatedAt
+  createdAt       DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [id])
+  jobs ErpExportJob[]
+  @@index([userId])
+}
+
+model ErpExportJob {
+  id                String   @id @default(uuid())
+  configId          String
+  status            String   // "PENDING", "SUCCESS", "FAILED"
+  fromDate          DateTime
+  toDate            DateTime
+  filtersJson       String?
+  resultSummaryJson String?
+  errorMessage      String?
+  runAt             DateTime?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  config ErpExportConfig @relation(fields: [configId], references: [id])
+  @@index([configId])
 }
 
 // --- Canonical Schema V1 ---

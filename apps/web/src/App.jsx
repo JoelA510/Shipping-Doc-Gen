@@ -9,6 +9,7 @@ import ShipmentReviewPage from './components/review/ShipmentReviewPage';
 import AddressBookPage from './components/address-book/AddressBookPage';
 import ProductLibraryPage from './components/items/ProductLibraryPage';
 import TemplateLibraryPage from './components/templates/TemplateLibraryPage';
+import ErpExportDashboard from './components/erp/ErpExportDashboard';
 
 // ...
 
@@ -302,6 +303,20 @@ function AppContent() {
                                 transition={{ duration: 0.3 }}
                             >
                                 <ReportsPage />
+                            </motion.div>
+                        </Layout>
+                    </ProtectedRoute>
+                } />
+                <Route path="/erp" element={
+                    <ProtectedRoute user={user} loading={loading}>
+                        <Layout user={user} onLogout={handleLogout}>
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -20 }}
+                                transition={{ duration: 0.3 }}
+                            >
+                                <ErpExportDashboard />
                             </motion.div>
                         </Layout>
                     </ProtectedRoute>

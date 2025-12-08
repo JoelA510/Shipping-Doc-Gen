@@ -17,6 +17,7 @@ const shipmentsRouter = require('./routes/shipments');
 const importRouter = require('./routes/import');
 const filesRouter = require('./routes/files');
 const forwardersRouter = require('./routes/forwarders');
+const erpRouter = require('./routes/erp');
 
 const port = process.env.PORT || 3001;
 const app = express();
@@ -66,6 +67,7 @@ app.use('/templates', requireAuth, templatesRouter);
 app.use('/notifications', requireAuth, notificationsRouter);
 app.use('/carriers', requireAuth, carriersRouter);
 app.use('/forwarders', requireAuth, forwardersRouter);
+app.use('/erp', requireAuth, erpRouter);
 app.use('/reports', requireAuth, require('./routes/reports')); // New Reports Router
 app.use('/parties', requireAuth, partiesRouter);
 app.use('/items', requireAuth, require('./routes/items'));

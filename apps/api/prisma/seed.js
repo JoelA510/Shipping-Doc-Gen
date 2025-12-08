@@ -138,6 +138,31 @@ Shipping Team`,
     });
     console.log('Seeded Forwarder Profile');
 
+    // 5. Seed ERP Export Configs (Epic 16)
+    await prisma.erpExportConfig.create({
+        data: {
+            userId: 'system-seed',
+            name: 'Daily JDE CSV Export',
+            targetType: 'FILE',
+            format: 'CSV',
+            destination: '/exports/jde/shipments_{{date}}.csv',
+            schedule: 'MANUAL'
+        }
+    });
+
+    await prisma.erpExportConfig.create({
+        data: {
+            userId: 'system-seed',
+            name: 'SAP Webhook Sync',
+            targetType: 'HTTP',
+            format: 'JSON',
+            destination: 'https://api.sap-mock.com/v1/shipments',
+            schedule: 'MANUAL',
+            httpMethod: 'POST'
+        }
+    });
+    console.log('Seeded ERP Export Configs');
+
     console.log('Seeding finished.');
 }
 

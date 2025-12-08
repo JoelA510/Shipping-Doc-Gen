@@ -212,14 +212,36 @@ export const api = {
     },
 
     generateBookingPackage: async (shipmentId, profileId) => {
-        // Post to the route mounted at /forwarders/shipments/:id/booking
-        // Wait, index.js says mounted at /forwarders. 
-        // routes/forwarders.js has router.post('/shipments/:id/booking', ...)
-        // So URL is /forwarders/shipments/:id/booking
+        // ... previous code
         return request(`/forwarders/shipments/${shipmentId}/booking`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ profileId })
+        });
+    },
+
+    // ERP Export (Epic 16)
+    getErpConfigs: async () => {
+        return request('/erp/configs');
+    },
+
+    createErpConfig: async (data) => {
+        return request('/erp/configs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+    },
+
+    getErpJobs: async () => {
+        return request('/erp/jobs');
+    },
+
+    runErpJob: async (data) => {
+        return request('/erp/jobs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
         });
     }
 };
