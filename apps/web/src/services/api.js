@@ -180,5 +180,13 @@ export const api = {
         const res = await request(`/shipments/${id}/validation`);
         // Ensure we return the issues array or Summary object structure expected
         return res;
+    },
+
+    generateDocument: async (shipmentId, type) => {
+        return request(`/shipments/${shipmentId}/documents`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type })
+        });
     }
 };

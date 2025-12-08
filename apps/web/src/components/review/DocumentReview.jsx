@@ -209,9 +209,8 @@ export default function DocumentReview({ document, onBack, user, onGenerate }) {
             let response;
             if (doc.isShipment && typeof onGenerate === 'function') {
                 // Use custom generation handler for Shipments
-                // Map template selection to document type
-                const type = selectedTemplate === 'sli' ? 'commercial-invoice' : 'packing-list'; // TODO: Better mapping
-                response = await onGenerate(type);
+                // Pass the selected template directly as the type/template
+                response = await onGenerate(selectedTemplate);
             } else {
                 // Default legacy behavior for Documents
                 response = await api.triggerExport(doc.id, 'sli', selectedTemplate);
@@ -275,8 +274,13 @@ export default function DocumentReview({ document, onBack, user, onGenerate }) {
                                 className="border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200"
                                 aria-label="Select export template"
                             >
-                                <option value="sli">Commercial Invoice</option>
-                                <option value="nippon">Packing List</option>
+                                <option value="sli">Commercial Invoice (SLI)</option>
+                                <option value="nippon">Packing List (Nippon)</option>
+                                <option value="proforma_invoice">Proforma Invoice</option>
+                                <option value="shipper_letter_of_instruction">Shipper's Letter of Instruction</option>
+                                <option value="certificate_of_origin">Certificate of Origin</option>
+                                <option value="dangerous_goods_declaration">Dangerous Goods Declaration</option>
+                                <option value="usps-label">Label (USPS)</option>
                             </select>
                             <button
                                 onClick={handleExport}
@@ -284,7 +288,7 @@ export default function DocumentReview({ document, onBack, user, onGenerate }) {
                                 className="btn-primary flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-200"
                             >
                                 {/* <Download className="w-4 h-4" /> */}
-                                {isExporting ? 'Exporting...' : 'Export SLI'}
+                                {isExporting ? 'Exporting...' : 'Generate PDF'}
                             </button>
                         </>
                     ) : (
@@ -460,6 +464,7 @@ export default function DocumentReview({ document, onBack, user, onGenerate }) {
                                         <th className="p-4 text-right font-semibold">Value (USD)</th>
                                         <th className="p-4 font-semibold">HTS</th>
                                         <th className="p-4 font-semibold">COO</th>
+                                        <th className="p-4 font-semibold w-48">Dangerous Goods</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
@@ -485,6 +490,40 @@ export default function DocumentReview({ document, onBack, user, onGenerate }) {
                                             </td>
                                             <td className="p-4">
                                                 <EditableField value={line.countryOfOrigin} isEditing={isEditing} onChange={(val) => handleLineChange(i, 'countryOfOrigin', val)} />
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="flex flex-col gap-1">
+                                                    <EditableField
+                                                        placeholder="UN#"
+                                                        value={line.dgUnNumber}
+                                                        isEditing={isEditing}
+                                                        onChange={(val) => handleLineChange(i, 'dgUnNumber', val)}
+                                                    />
+                                                    <div className="flex gap-1">
+                                                        <EditableField
+                                                            placeholder="Class"
+                                                            value={line.dgHazardClass}
+                                                            isEditing={isEditing}
+                                                            onChange={(val) => handleLineChange(i, 'dgHazardClass', val)}
+                                                        />
+                                                        <EditableField
+                                                            placeholder="PG"
+                                                            value={line.dgPackingGroup}
+                                                            isEditing={isEditing}
+                                                            onChange={(val) => handleLineChange(i, 'dgPackingGroup', val)}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <label className="flex items-center gap-2 mt-1">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={line.isDangerousGoods || false}
+                                                        onChange={(e) => handleLineChange(i, 'isDangerousGoods', e.target.checked)}
+                                                        disabled={!isEditing}
+                                                        className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-200"
+                                                    />
+                                                    <span className="text-xs text-slate-500">DG</span>
+                                                </label>
                                             </td>
                                         </tr>
                                     ))}

@@ -301,6 +301,12 @@ model Item {
   defaultUnitValue Float?
   defaultNetWeightKg Float?
   uom             String?
+  
+  // Default Compliance
+  defaultIsDangerousGoods Boolean?
+  defaultDgUnNumber       String?
+  defaultDgHazardClass    String?
+  defaultDgPackingGroup   String?
 
   createdByUserId String?
   createdAt       DateTime @default(now())
