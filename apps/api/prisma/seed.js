@@ -8,17 +8,91 @@ const HTS_CODES = [
     { code: '8544.42.0000', description: 'Insulated (including enameled or anodized) wire, cable (including coaxial cable) and other insulated electric conductors, fitted with connectors' },
 ];
 
+const fixtures = require('../tests/fixtures/shipments');
+
 async function main() {
     console.log('Start seeding ...');
 
+    // 1. Seed Reference Data
     for (const hts of HTS_CODES) {
-        const item = await prisma.htsCode.upsert({
+        await prisma.htsCode.upsert({
             where: { code: hts.code },
             update: {},
             create: hts,
         });
-        console.log(`Created/Updated HTS Code: ${item.code}`);
     }
+    console.log('Seeded HTS Codes');
+
+    // 2. Seed Parties
+    const partyMap = {};
+    for (const [key, data] of Object.entries(fixtures.parties)) {
+        const party = await prisma.party.create({
+            data: {
+                ...data,
+                // Ensure unique tax ID if present to avoid unique constraint if we added one (we didn't yet, but good practice)
+                createdByUserId: 'system-seed'
+            }
+        });
+        partyMap[key] = party;
+        console.log(`Created Party: ${data.name}`);
+    }
+
+    // 3. Seed Shipments
+    // Helper to map fixture party keys to real IDs and create snapshots
+    const createShipmentFromFixture = async (fixtureData) => {
+        // We know fixture has 'shipper', 'consignee', etc. as objects from fixtures.parties
+        // We need to map them to the IDs we just created.
+
+        // Reverse lookup or just use the objects if we passed them directly?
+        // The fixture file exports actual objects. We need to find the ID corresponding to that object.
+        // Let's rely on name matching for simplicity in this seed script or rebuild the fixture usage.
+
+        // Easier approach: The fixture objects are references. 
+        // We can find the key in `fixtures.parties` that matches the object in `fixtureData.shipper`
+        const findPartyId = (fixtureParty) => {
+            const entry = Object.entries(fixtures.parties).find(([k, v]) => v === fixtureParty);
+            return entry ? partyMap[entry[0]].id : null;
+        };
+
+        const shipperId = findPartyId(fixtureData.shipper);
+        const consigneeId = findPartyId(fixtureData.consignee);
+
+        if (!shipperId || !consigneeId) {
+            console.warn('Skipping shipment seed due to missing party map');
+            return;
+        }
+
+        const snapshot = (p) => JSON.stringify(p);
+
+        await prisma.shipment.create({
+            data: {
+                ...fixtureData,
+                shipper: undefined, // remove object
+                consignee: undefined, // remove object
+                lineItems: {
+                    create: fixtureData.lineItems
+                },
+                shipperId,
+                consigneeId,
+                createdByUserId: 'system-seed',
+                shipperSnapshot: snapshot(fixtureData.shipper),
+                consigneeSnapshot: snapshot(fixtureData.consignee)
+            }
+        });
+    };
+
+    await createShipmentFromFixture(fixtures.shipments.domestic);
+    console.log('Seeded Domestic Shipment');
+
+    await createShipmentFromFixture(fixtures.shipments.internationalEEI);
+    console.log('Seeded Intl EEI Shipment');
+
+    await createShipmentFromFixture(fixtures.shipments.dangerousGoods);
+    console.log('Seeded DG Shipment');
+
+    // Invalid one might fail validation if we ran it, but DB insert should be fine (schema is loose)
+    await createShipmentFromFixture(fixtures.shipments.invalid);
+    console.log('Seeded Invalid Shipment');
 
     console.log('Seeding finished.');
 }

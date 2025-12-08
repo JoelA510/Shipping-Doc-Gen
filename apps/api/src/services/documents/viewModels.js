@@ -85,7 +85,115 @@ function buildPackingListViewModel(shipment, lineItems) {
     };
 }
 
+/**
+ * Formats a ShipmentV1 object for Proforma Invoice.
+ * Focused on quoted values, often identical to Commercial Invoice but with different label.
+ */
+function buildProformaInvoiceViewModel(shipment, lineItems) {
+    const invoiceVM = buildInvoiceViewModel(shipment, lineItems);
+    return {
+        ...invoiceVM,
+        metadata: {
+            ...invoiceVM.metadata,
+            title: 'PROFORMA INVOICE',
+            documentNumber: `PRO-${shipment.id.slice(0, 8).toUpperCase()}`
+        }
+    };
+}
+
+/**
+ * Formats a ShipmentV1 object for Shipper's Letter of Instruction (SLI).
+ * Needs instructions, parties, and EEI/AES info.
+ */
+function buildSliViewModel(shipment, lineItems) {
+    const invoiceVM = buildInvoiceViewModel(shipment, lineItems);
+
+    // SLI specific logic
+    const isRouted = 'N'; // logic placeholder
+    const partiesToDeclare = 'N'; // logic placeholder for related parties
+
+    return {
+        ...invoiceVM,
+        metadata: {
+            ...invoiceVM.metadata,
+            title: "SHIPPER'S LETTER OF INSTRUCTION",
+            documentNumber: `SLI-${shipment.id.slice(0, 8).toUpperCase()}`
+        },
+        sli: {
+            instructions: "Please route via best available carrier.",
+            isRouted,
+            partiesToDeclare,
+            eccn: lineItems.some(l => l.eccn) ? "Contains EAR99 items" : "No License Required",
+            aes: {
+                required: shipment.aesRequired,
+                itn: shipment.aesItn || "Pending",
+                exemption: shipment.eeiExemptionCode
+            }
+        }
+    };
+}
+
+/**
+ * Formats for Certificate of Origin.
+ * Emphasizes Country of Origin per line.
+ */
+function buildCooViewModel(shipment, lineItems) {
+    const invoiceVM = buildInvoiceViewModel(shipment, lineItems);
+
+    // Group lines by origin? For generic COO, listing all lines is fine.
+    // We might want to deduplicate origins for the "main" origin statement.
+    const uniqueOrigins = [...new Set(lineItems.map(l => l.countryOfOrigin).filter(Boolean))];
+
+    return {
+        ...invoiceVM,
+        metadata: {
+            ...invoiceVM.metadata,
+            title: "CERTIFICATE OF ORIGIN",
+            documentNumber: `COO-${shipment.id.slice(0, 8).toUpperCase()}`
+        },
+        coo: {
+            primaryOrigin: uniqueOrigins.join(', ') || 'Unknown',
+            exporterStatement: "The undersigned hereby declares that the above details and statements are correct; that all the goods were produced in the country(ies) listed."
+        }
+    };
+}
+
+/**
+ * Formats for Dangerous Goods Declaration.
+ * ONLY includes DG lines.
+ */
+function buildDgDeclarationViewModel(shipment, lineItems) {
+    const invoiceVM = buildInvoiceViewModel(shipment, lineItems);
+
+    // Filter only DG lines
+    const dgLines = lineItems.filter(l => l.isDangerousGoods);
+
+    return {
+        ...invoiceVM,
+        lines: dgLines.map(line => ({
+            ...invoiceVM.lines.find(l => l.description === line.description), // fallback mapping
+            unNumber: line.dgUnNumber,
+            hazardClass: line.dgHazardClass,
+            packingGroup: line.dgPackingGroup,
+            properShippingName: line.description // simplistic mapping
+        })),
+        metadata: {
+            ...invoiceVM.metadata,
+            title: "DANGEROUS GOODS DECLARATION",
+            documentNumber: `DGD-${shipment.id.slice(0, 8).toUpperCase()}`
+        },
+        dg: {
+            emergencyContact: "CHEMTREC 1-800-424-9300", // Placeholder default
+            declaration: "I hereby declare that the contents of this consignment are fully and accurately described above by the proper shipping name, and are classified, packaged, marked and labeled/placarded, and are in all respects in proper condition for transport according to applicable international and national governmental regulations."
+        }
+    };
+}
+
 module.exports = {
     buildInvoiceViewModel,
-    buildPackingListViewModel
+    buildPackingListViewModel,
+    buildProformaInvoiceViewModel,
+    buildSliViewModel,
+    buildCooViewModel,
+    buildDgDeclarationViewModel
 };
