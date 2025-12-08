@@ -139,19 +139,7 @@ export default function DocumentReview({ document, onBack, user, onGenerate }) {
                         <EditableField label="Country" value={data.country} isEditing={isEditing} onChange={(v) => onChange('country', v)} />
                     </div>
                     {/* Hidden Party ID indicator */}
-                    {data.partyId && (
-                        <div className="text-xs text-emerald-600 flex items-center gap-1 mt-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                            Linked to Address Book
-                        </div>
-                    )}
                 </div>
-
-                <PartySelector
-                    isOpen={isSelectorOpen}
-                    onClose={() => setIsSelectorOpen(false)}
-                    onSelect={handleSelectParty}
-                />
             </div>
         );
     };
@@ -177,367 +165,471 @@ export default function DocumentReview({ document, onBack, user, onGenerate }) {
                 })
             });
 
-            if (res.ok) {
-                setMessage({ type: 'success', text: 'Template saved successfully' });
-            } else {
-                throw new Error('Failed to save template');
+            setIsSaving(true);
+            setMessage(null);
+            try {
+                await api.updateDocument(doc.id, doc);
+                setIsEditing(false);
+                setMessage({ type: 'success', text: 'Document saved successfully' });
+            } catch (err) {
+                setMessage({ type: 'error', text: `Save failed: ${err.message}` });
+            } finally {
+                setIsSaving(false);
             }
-        } catch (err) {
-            setMessage({ type: 'error', text: `Template save failed: ${err.message}` });
-        }
-    };
+        };
 
+        const handleExport = async () => {
+            setIsExporting(true);
+            setMessage(null);
+            try {
+                let response;
+                if (doc.isShipment && typeof onGenerate === 'function') {
+                    // Use custom generation handler for Shipments
+                    // Pass the selected template directly as the type/template
+                    response = await onGenerate(selectedTemplate);
+                } else {
+                    // Default legacy behavior for Documents
+                    response = await api.triggerExport(doc.id, 'sli', selectedTemplate);
+                }
 
-    const handleSave = async () => {
-        setIsSaving(true);
-        setMessage(null);
-        try {
-            await api.updateDocument(doc.id, doc);
-            setIsEditing(false);
-            setMessage({ type: 'success', text: 'Document saved successfully' });
-        } catch (err) {
-            setMessage({ type: 'error', text: `Save failed: ${err.message}` });
-        } finally {
-            setIsSaving(false);
-        }
-    };
+                if (response && response.url) {
+                    // Open URL in new window/tab - browser will handle the download
+                    const fullUrl = `${API_URL}${response.url}`;
+                    window.open(fullUrl, '_blank');
+                    setMessage({ type: 'success', text: 'Export complete. Download should begin shortly.' });
+                } else {
+                </select >
+        <button
+            onClick={handleExport}
+            disabled={isExporting}
+            className="btn-primary flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-200"
+        >
+            {/* <Download className="w-4 h-4" /> */}
+            {isExporting ? 'Exporting...' : 'Generate PDF'}
+        </button>
+            </>
+        ) : (
+        <>
+            <button
+                onClick={() => { setIsEditing(false); setDoc(document); }}
+                className="btn-secondary flex items-center gap-2"
+            >
+                <X className="w-4 h-4" />
+                Cancel
+            </button>
+            <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="btn-primary flex items-center gap-2"
+            >
+                <Save className="w-4 h-4" />
+                {isSaving ? 'Saving...' : 'Save Changes'}
+            </button>
+        </>
+    )
+}
+                </div >
+            </div >
 
-    const handleExport = async () => {
-        setIsExporting(true);
-        setMessage(null);
-        try {
-            let response;
-            if (doc.isShipment && typeof onGenerate === 'function') {
-                // Use custom generation handler for Shipments
-                // Pass the selected template directly as the type/template
-                response = await onGenerate(selectedTemplate);
-            } else {
-                // Default legacy behavior for Documents
-                response = await api.triggerExport(doc.id, 'sli', selectedTemplate);
-            }
+    { message && (
+        <div
+            className={`p-4 rounded-lg border ${message.type === 'success'
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                : 'bg-red-50 border-red-200 text-red-800'
+                }`}
+        >
+            {message.text}
+        </div>
+    )
+}
 
-            if (response && response.url) {
-                // Open URL in new window/tab - browser will handle the download
-                const fullUrl = `${API_URL}${response.url}`;
-                window.open(fullUrl, '_blank');
-                setMessage({ type: 'success', text: 'Export complete. Download should begin shortly.' });
-            } else {
-                setMessage({ type: 'success', text: 'Export started. Check your email or download queue.' });
-            }
-        } catch (err) {
-            console.error('Export failed:', err);
-            setMessage({ type: 'error', text: `Export failed: ${err.message}` });
-        } finally {
-            setIsExporting(false);
-        }
-    };
-
-    return (
-        <div className="space-y-6">
-            {/* Sticky Header Actions */}
-            <div className="sticky top-20 z-40 bg-white/90 backdrop-blur-md border border-slate-200/60 shadow-sm rounded-xl p-4 flex justify-between items-center transition-all duration-200">
-                <div className="flex items-center gap-4">
-                    <button
-                        onClick={onBack}
-                        className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors"
-                        title="Back"
-                        aria-label="Back"
-                    >
-                        <ArrowLeft className="w-5 h-5" />
-                    </button>
-                    <div>
-                        <h2 className="text-lg font-bold text-slate-900">Review & Edit</h2>
-                        <p className="text-xs text-slate-500">ID: {doc.id.slice(0, 8)}...</p>
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                    {!isEditing ? (
-                        <>
-                            <button
-                                onClick={() => setIsEditing(true)}
-                                className="btn-secondary flex items-center gap-2"
-                            >
-                                <Edit2 className="w-4 h-4" />
-                                Edit Mode
-                            </button>
-                            <button
-                                onClick={handleSaveAsTemplate}
-                                className="btn-secondary flex items-center gap-2 border-purple-300 text-purple-700 hover:bg-purple-50"
-                            >
-                                <BookmarkPlus className="w-4 h-4" />
-                                Save as Template
-                            </button>
-                            <select
-                                value={selectedTemplate}
-                                onChange={(e) => setSelectedTemplate(e.target.value)}
-                                className="border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200"
-                                aria-label="Select export template"
-                            >
-                                <option value="sli">Commercial Invoice (SLI)</option>
-                                <option value="nippon">Packing List (Nippon)</option>
-                                <option value="proforma_invoice">Proforma Invoice</option>
-                                <option value="shipper_letter_of_instruction">Shipper's Letter of Instruction</option>
-                                <option value="certificate_of_origin">Certificate of Origin</option>
-                                <option value="dangerous_goods_declaration">Dangerous Goods Declaration</option>
-                                <option value="usps-label">Label (USPS)</option>
-                            </select>
-                            <button
-                                onClick={handleExport}
-                                disabled={isExporting}
-                                className="btn-primary flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-200"
-                            >
-                                {/* <Download className="w-4 h-4" /> */}
-                                {isExporting ? 'Exporting...' : 'Generate PDF'}
-                            </button>
-                        </>
-                    ) : (
-                        <>
-                            <button
-                                onClick={() => { setIsEditing(false); setDoc(document); }}
-                                className="btn-secondary flex items-center gap-2"
-                            >
-                                <X className="w-4 h-4" />
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleSave}
-                                disabled={isSaving}
-                                className="btn-primary flex items-center gap-2"
-                            >
-                                <Save className="w-4 h-4" />
-                                {isSaving ? 'Saving...' : 'Save Changes'}
-                            </button>
-                        </>
-                    )}
-                </div>
+{
+    validationErrors.length > 0 && (
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-center gap-2 mb-2 text-amber-800 font-semibold">
+                <AlertTriangle className="w-5 h-5" />
+                <h3>Validation Issues</h3>
             </div>
-
-            {message && (
-                <div
-                    className={`p-4 rounded-lg border ${message.type === 'success'
-                        ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                        : 'bg-red-50 border-red-200 text-red-800'
-                        }`}
-                >
-                    {message.text}
-                </div>
-            )}
-
-            {validationErrors.length > 0 && (
-                <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                    <div className="flex items-center gap-2 mb-2 text-amber-800 font-semibold">
-                        <AlertTriangle className="w-5 h-5" />
-                        <h3>Validation Issues</h3>
-                    </div>
-                    <ul className="list-disc pl-5 space-y-1 text-sm text-amber-700">
-                        {validationErrors.map((err, i) => (
-                            <li key={i}>
-                                Line {err.lineIndex + 1}: {err.message} ({err.field}: {err.value})
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            )}
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Main Content */}
-                <div className="lg:col-span-2 space-y-6">
-                    {/* Header Section */}
-                    <section className="card">
-                        <h3 className="text-lg font-semibold text-slate-900 mb-4 pb-2 border-b border-slate-100">
-                            Shipment Details
-                        </h3>
-                        <div className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <AddressBlock
-                                    title="Shipper"
-                                    data={header.shipper}
-                                    isEditing={isEditing}
-                                    onChange={(field, val) => handleAddressChange('shipper', field, val)}
-                                />
-                                <AddressBlock
-                                    title="Consignee"
-                                    data={header.consignee}
-                                    isEditing={isEditing}
-                                    onChange={(field, val) => handleAddressChange('consignee', field, val)}
-                                />
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <EditableField
-                                    label="Incoterm"
-                                    value={header.incoterm}
-                                    isEditing={isEditing}
-                                    onChange={(val) => handleHeaderChange('incoterm', val)}
-                                />
-                                <EditableField
-                                    label="Currency"
-                                    value={header.currency}
-                                    isEditing={isEditing}
-                                    onChange={(val) => handleHeaderChange('currency', val)}
-                                />
-                            </div>
-                        </div>
-                    </section>
-
-                    {/* References Section */}
-                    <section className="card">
-                        <h3 className="text-lg font-semibold text-slate-900 mb-4 pb-2 border-b border-slate-100">
-                            References
-                        </h3>
-
-                        <div className="space-y-3 mb-4">
-                            {(doc.references || []).map((ref, idx) => (
-                                <div key={idx} className="flex items-center gap-2 p-2 bg-slate-50 rounded border border-slate-100">
-                                    <span className="font-medium text-slate-700 w-24">{ref.type}:</span>
-                                    <span className="flex-1 text-slate-900">{ref.value}</span>
-                                    {isEditing && (
-                                        <button
-                                            onClick={() => handleRemoveReference(idx)}
-                                            className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded"
-                                            title="Remove reference"
-                                            aria-label={`Remove reference ${ref.type} ${ref.value}`}
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
-                                    )}
-                                </div>
-                            ))}
-                            {(!doc.references || doc.references.length === 0) && (
-                                <div className="text-slate-400 italic text-sm">No references added</div>
-                            )}
-                        </div>
-
-                        {/* Add Form */}
-                        {isEditing && (doc.references || []).length < 5 && (
-                            <div className="flex gap-3 items-end border-t border-slate-100 pt-4 mt-4">
-                                <div className="w-32">
-                                    <label htmlFor="new-ref-type" className="block text-xs font-medium text-slate-500 mb-1">Type</label>
-                                    <select
-                                        id="new-ref-type"
-                                        value={newRefType}
-                                        onChange={(e) => setNewRefType(e.target.value)}
-                                        className="input-field py-1.5 text-sm"
-                                    >
-                                        <option value="PO">PO</option>
-                                        <option value="SO">SO</option>
-                                        <option value="Invoice">Invoice</option>
-                                        <option value="Shipment">Shipment</option>
-                                        <option value="HAWB">HAWB</option>
-                                        <option value="Other">Other</option>
-                                    </select>
-                                </div>
-                                <div className="flex-1">
-                                    <label htmlFor="new-ref-value" className="block text-xs font-medium text-slate-500 mb-1">Value</label>
-                                    <input
-                                        id="new-ref-value"
-                                        type="text"
-                                        value={newRefValue}
-                                        onChange={(e) => setNewRefValue(e.target.value)}
-                                        className="input-field py-1.5 text-sm"
-                                        placeholder="Enter number"
-                                    />
-                                </div>
-                                <button
-                                    onClick={handleAddReference}
-                                    className="btn-secondary py-1.5 px-3 flex items-center gap-1 text-emerald-600 border-emerald-200 hover:bg-emerald-50"
-                                >
-                                    <Plus size={16} /> Add
-                                </button>
-                            </div>
+            <ul className="list-disc pl-5 space-y-2 text-sm text-amber-700">
+                {validationErrors.map((err, i) => (
+                    <li key={i} className="flex items-start justify-between gap-2">
+                        <span>
+                            {err.lineIndex !== undefined ? `Line ${err.lineIndex + 1}: ` : ''}
+                            {err.message}
+                            {err.field && ` (${err.field})`}
+                        </span>
+                        {err.code && (
+                            <button
+                                onClick={() => handleDismiss(err.code)}
+                                className="text-xs text-amber-600 hover:text-amber-800 underline shrink-0"
+                            >
+                                Dismiss
+                            </button>
                         )}
-                    </section>
+                    </li>
+                ))}
+            </ul>
+        </div>
+    )
+}
 
-                    {/* Line Items Section */}
-                    <section className="card overflow-hidden p-0">
-                        <div className="p-6 border-b border-slate-100">
-                            <h3 className="text-lg font-semibold text-slate-900">Line Items</h3>
-                        </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm">
-                                <thead className="bg-slate-50/50 text-slate-500 font-medium border-b border-slate-100">
-                                    <tr>
-                                        <th className="p-4 font-semibold">Part #</th>
-                                        <th className="p-4 font-semibold">Description</th>
-                                        <th className="p-4 text-right font-semibold">Qty</th>
-                                        <th className="p-4 text-right font-semibold">Weight (kg)</th>
-                                        <th className="p-4 text-right font-semibold">Value (USD)</th>
-                                        <th className="p-4 font-semibold">HTS</th>
-                                        <th className="p-4 font-semibold">COO</th>
-                                        <th className="p-4 font-semibold w-48">Dangerous Goods</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-50">
-                                    {lines.map((line, i) => (
-                                        <tr key={i} className="hover:bg-slate-50/80 transition-colors duration-150">
-                                            <td className="p-4">
-                                                <EditableField value={line.partNumber} isEditing={isEditing} onChange={(val) => handleLineChange(i, 'partNumber', val)} />
-                                            </td>
-                                            <td className="p-4">
-                                                <EditableField value={line.description} isEditing={isEditing} onChange={(val) => handleLineChange(i, 'description', val)} />
-                                            </td>
-                                            <td className="p-4 text-right">
-                                                <EditableField value={line.quantity} isEditing={isEditing} type="number" onChange={(val) => handleLineChange(i, 'quantity', val)} />
-                                            </td>
-                                            <td className="p-4 text-right">
-                                                <EditableField value={line.netWeightKg} isEditing={isEditing} type="number" onChange={(val) => handleLineChange(i, 'netWeightKg', val)} />
-                                            </td>
-                                            <td className="p-4 text-right">
-                                                <EditableField value={line.valueUsd} isEditing={isEditing} type="number" onChange={(val) => handleLineChange(i, 'valueUsd', val)} />
-                                            </td>
-                                            <td className="p-4">
-                                                <EditableField value={line.htsCode} isEditing={isEditing} onChange={(val) => handleLineChange(i, 'htsCode', val)} />
-                                            </td>
-                                            <td className="p-4">
-                                                <EditableField value={line.countryOfOrigin} isEditing={isEditing} onChange={(val) => handleLineChange(i, 'countryOfOrigin', val)} />
-                                            </td>
-                                            <td className="p-4">
-                                                <div className="flex flex-col gap-1">
-                                                    <EditableField
-                                                        placeholder="UN#"
-                                                        value={line.dgUnNumber}
-                                                        isEditing={isEditing}
-                                                        onChange={(val) => handleLineChange(i, 'dgUnNumber', val)}
-                                                    />
-                                                    <div className="flex gap-1">
-                                                        <EditableField
-                                                            placeholder="Class"
-                                                            value={line.dgHazardClass}
-                                                            isEditing={isEditing}
-                                                            onChange={(val) => handleLineChange(i, 'dgHazardClass', val)}
-                                                        />
-                                                        <EditableField
-                                                            placeholder="PG"
-                                                            value={line.dgPackingGroup}
-                                                            isEditing={isEditing}
-                                                            onChange={(val) => handleLineChange(i, 'dgPackingGroup', val)}
-                                                        />
-                                                    </div>
-                                                </div>
-                                                <label className="flex items-center gap-2 mt-1">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={line.isDangerousGoods || false}
-                                                        onChange={(e) => handleLineChange(i, 'isDangerousGoods', e.target.checked)}
-                                                        disabled={!isEditing}
-                                                        className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-200"
-                                                    />
-                                                    <span className="text-xs text-slate-500">DG</span>
-                                                </label>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </section>
+<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    {/* Main Content */}
+    <div className="lg:col-span-2 space-y-6">
+        {/* Header Section */}
+        <section className="card">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4 pb-2 border-b border-slate-100">
+                Shipment Details
+            </h3>
+            <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <AddressBlock
+                        title="Shipper"
+                        data={header.shipper}
+                        isEditing={isEditing}
+                        onChange={(field, val) => handleAddressChange('shipper', field, val)}
+                    />
+                    <AddressBlock
+                        title="Consignee"
+                        data={header.consignee}
+                        isEditing={isEditing}
+                        onChange={(field, val) => handleAddressChange('consignee', field, val)}
+                    />
                 </div>
-
-                {/* Sidebar */}
-                <div className="space-y-6">
-                    <Comments documentId={doc.id} user={user} />
-                    <History documentId={!doc.isShipment ? doc.id : undefined} shipmentId={doc.isShipment ? doc.id : undefined} />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <EditableField
+                        label="Incoterm"
+                        value={header.incoterm}
+                        isEditing={isEditing}
+                        onChange={(val) => handleHeaderChange('incoterm', val)}
+                    />
+                    <EditableField
+                        label="Currency"
+                        value={header.currency}
+                        isEditing={isEditing}
+                        onChange={(val) => handleHeaderChange('currency', val)}
+                    />
                 </div>
             </div>
-            );
+        </section>
+
+        {/* References Section */}
+        <section className="card">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4 pb-2 border-b border-slate-100">
+                References
+            </h3>
+
+            <div className="space-y-3 mb-4">
+                {(doc.references || []).map((ref, idx) => (
+                    <div key={idx} className="flex items-center gap-2 p-2 bg-slate-50 rounded border border-slate-100">
+                        <span className="font-medium text-slate-700 w-24">{ref.type}:</span>
+                        <span className="flex-1 text-slate-900">{ref.value}</span>
+                        {isEditing && (
+                            <button
+                                onClick={() => handleRemoveReference(idx)}
+                                className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded"
+                                title="Remove reference"
+                                aria-label={`Remove reference ${ref.type} ${ref.value}`}
+                            >
+                                <Trash2 size={16} />
+                            </button>
+                        )}
+                    </div>
+                ))}
+                {(!doc.references || doc.references.length === 0) && (
+                    <div className="text-slate-400 italic text-sm">No references added</div>
+                )}
+            </div>
+
+            {/* Add Form */}
+            {isEditing && (doc.references || []).length < 5 && (
+                <div className="flex gap-3 items-end border-t border-slate-100 pt-4 mt-4">
+                    <div className="w-32">
+                        <label htmlFor="new-ref-type" className="block text-xs font-medium text-slate-500 mb-1">Type</label>
+                        <select
+                            id="new-ref-type"
+                            value={newRefType}
+                            onChange={(e) => setNewRefType(e.target.value)}
+                            className="input-field py-1.5 text-sm"
+                        >
+                            <option value="PO">PO</option>
+                            <option value="SO">SO</option>
+                            <option value="Invoice">Invoice</option>
+                            <option value="Shipment">Shipment</option>
+                            <option value="HAWB">HAWB</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div className="flex-1">
+                        <label htmlFor="new-ref-value" className="block text-xs font-medium text-slate-500 mb-1">Value</label>
+                        <input
+                            id="new-ref-value"
+                            type="text"
+                            value={newRefValue}
+                            onChange={(e) => setNewRefValue(e.target.value)}
+                            className="input-field py-1.5 text-sm"
+                            placeholder="Enter number"
+                        />
+                    </div>
+                                </td>
+                                <td className="p-4 text-right">
+                                    <EditableField value={line.quantity} isEditing={isEditing} type="number" onChange={(val) => handleLineChange(i, 'quantity', val)} />
+                                </td>
+                                <td className="p-4 text-right">
+                                    <EditableField value={line.netWeightKg} isEditing={isEditing} type="number" onChange={(val) => handleLineChange(i, 'netWeightKg', val)} />
+                                </td>
+                                <td className="p-4 text-right">
+                                    <EditableField value={line.valueUsd} isEditing={isEditing} type="number" onChange={(val) => handleLineChange(i, 'valueUsd', val)} />
+                                </td>
+                                <td className="p-4">
+                                    <EditableField value={line.htsCode} isEditing={isEditing} onChange={(val) => handleLineChange(i, 'htsCode', val)} />
+                                </td>
+                                <td className="p-4">
+                                    <EditableField value={line.countryOfOrigin} isEditing={isEditing} onChange={(val) => handleLineChange(i, 'countryOfOrigin', val)} />
+                                </td>
+                                <td className="p-4">
+                                    <div className="flex flex-col gap-1">
+                                        <EditableField
+                                            placeholder="UN#"
+                                            value={line.dgUnNumber}
+                                            isEditing={isEditing}
+                                            onChange={(val) => handleLineChange(i, 'dgUnNumber', val)}
+                                        />
+                                        <div className="flex gap-1">
+                                            <EditableField
+                                                placeholder="Class"
+                                                value={line.dgHazardClass}
+                                                isEditing={isEditing}
+                                                onChange={(val) => handleLineChange(i, 'dgHazardClass', val)}
+                                            />
+                                            <EditableField
+                                                placeholder="PG"
+                                                value={line.dgPackingGroup}
+                                                isEditing={isEditing}
+                                                onChange={(val) => handleLineChange(i, 'dgPackingGroup', val)}
+                                            />
+                                        </div>
+                                    </div>
+                                    <label className="flex items-center gap-2 mt-1">
+                                        <input
+                                            type="checkbox"
+                                            checked={line.isDangerousGoods || false}
+                                            onChange={(e) => handleLineChange(i, 'isDangerousGoods', e.target.checked)}
+                                            disabled={!isEditing}
+                                            className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-200"
+                                        />
+                                        <span className="text-xs text-slate-500">DG</span>
+                                    </label>
+        </>
+            )
+            }
+    </div >
+</div >
+
+{
+    message && (
+        <div
+            className={`p-4 rounded-lg border ${message.type === 'success'
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                : 'bg-red-50 border-red-200 text-red-800'
+                }`}
+        >
+            {message.text}
+        </div>
+    )
+}
+
+{
+    validationErrors.length > 0 && (
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-center gap-2 mb-2 text-amber-800 font-semibold">
+                <AlertTriangle className="w-5 h-5" />
+                <h3>Validation Issues</h3>
+            </div>
+            <ul className="list-disc pl-5 space-y-2 text-sm text-amber-700">
+                {validationErrors.map((err, i) => (
+                    <li key={i} className="flex items-start justify-between gap-2">
+                        <span>
+                            {err.lineIndex !== undefined ? `Line ${err.lineIndex + 1}: ` : ''}
+                            {err.message}
+                            {err.field && ` (${err.field})`}
+                        </span>
+                        {err.code && (
+                            <button
+                                onClick={() => handleDismiss(err.code)}
+                                className="text-xs text-amber-600 hover:text-amber-800 underline shrink-0"
+                            >
+                                Dismiss
+                            </button>
+                        )}
+                    </li>
+                ))}
+            </ul>
+        </div>
+    )
+}
+
+<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    {/* Main Content */}
+    <div className="lg:col-span-2 space-y-6">
+        {/* Header Section */}
+        <section className="card">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4 pb-2 border-b border-slate-100">
+                Shipment Details
+            </h3>
+            <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <AddressBlock
+                        title="Shipper"
+                        data={header.shipper}
+                        isEditing={isEditing}
+                        onChange={(field, val) => handleAddressChange('shipper', field, val)}
+                    />
+                    <AddressBlock
+                        title="Consignee"
+                        data={header.consignee}
+                        isEditing={isEditing}
+                        onChange={(field, val) => handleAddressChange('consignee', field, val)}
+                    />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <EditableField
+                        label="Incoterm"
+                        value={header.incoterm}
+                        isEditing={isEditing}
+                        onChange={(val) => handleHeaderChange('incoterm', val)}
+                    />
+                    <EditableField
+                        label="Currency"
+                        value={header.currency}
+                        isEditing={isEditing}
+                        onChange={(val) => handleHeaderChange('currency', val)}
+                    />
+                </div>
+            </div>
+        </section>
+
+        {/* References Section */}
+        <section className="card">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4 pb-2 border-b border-slate-100">
+                References
+            </h3>
+
+            <div className="space-y-3 mb-4">
+                {(doc.references || []).map((ref, idx) => (
+                    <div key={idx} className="flex items-center gap-2 p-2 bg-slate-50 rounded border border-slate-100">
+                        <span className="font-medium text-slate-700 w-24">{ref.type}:</span>
+                        <span className="flex-1 text-slate-900">{ref.value}</span>
+                        {isEditing && (
+                            <button
+                                onClick={() => handleRemoveReference(idx)}
+                                className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded"
+                                title="Remove reference"
+                                aria-label={`Remove reference ${ref.type} ${ref.value}`}
+                            >
+                                <Trash2 size={16} />
+                            </button>
+                        )}
+                    </div>
+                ))}
+                {(!doc.references || doc.references.length === 0) && (
+                    <div className="text-slate-400 italic text-sm">No references added</div>
+                )}
+            </div>
+
+            {/* Add Form */}
+            {isEditing && (doc.references || []).length < 5 && (
+                <div className="flex gap-3 items-end border-t border-slate-100 pt-4 mt-4">
+                    <div className="w-32">
+                        <label htmlFor="new-ref-type" className="block text-xs font-medium text-slate-500 mb-1">Type</label>
+                        <select
+                            id="new-ref-type"
+                            value={newRefType}
+                            onChange={(e) => setNewRefType(e.target.value)}
+                            className="input-field py-1.5 text-sm"
+                        >
+                            <option value="PO">PO</option>
+                            <option value="SO">SO</option>
+                            <option value="Invoice">Invoice</option>
+                            <option value="Shipment">Shipment</option>
+                            <option value="HAWB">HAWB</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div className="flex-1">
+                        <label htmlFor="new-ref-value" className="block text-xs font-medium text-slate-500 mb-1">Value</label>
+                        <input
+                            id="new-ref-value"
+                            type="text"
+                            value={newRefValue}
+                            onChange={(e) => setNewRefValue(e.target.value)}
+                            className="input-field py-1.5 text-sm"
+                            placeholder="Enter number"
+                        />
+                    </div>
+                                </td>
+                                <td className="p-4 text-right">
+                                    <EditableField value={line.quantity} isEditing={isEditing} type="number" onChange={(val) => handleLineChange(i, 'quantity', val)} />
+                                </td>
+                                <td className="p-4 text-right">
+                                    <EditableField value={line.netWeightKg} isEditing={isEditing} type="number" onChange={(val) => handleLineChange(i, 'netWeightKg', val)} />
+                                </td>
+                                <td className="p-4 text-right">
+                                    <EditableField value={line.valueUsd} isEditing={isEditing} type="number" onChange={(val) => handleLineChange(i, 'valueUsd', val)} />
+                                </td>
+                                <td className="p-4">
+                                    <EditableField value={line.htsCode} isEditing={isEditing} onChange={(val) => handleLineChange(i, 'htsCode', val)} />
+                                </td>
+                                <td className="p-4">
+                                    <EditableField value={line.countryOfOrigin} isEditing={isEditing} onChange={(val) => handleLineChange(i, 'countryOfOrigin', val)} />
+                                </td>
+                                <td className="p-4">
+                                    <div className="flex flex-col gap-1">
+                                        <EditableField
+                                            placeholder="UN#"
+                                            value={line.dgUnNumber}
+                                            isEditing={isEditing}
+                                            onChange={(val) => handleLineChange(i, 'dgUnNumber', val)}
+                                        />
+                                        <div className="flex gap-1">
+                                            <EditableField
+                                                placeholder="Class"
+                                                value={line.dgHazardClass}
+                                                isEditing={isEditing}
+                                                onChange={(val) => handleLineChange(i, 'dgHazardClass', val)}
+                                            />
+                                            <EditableField
+                                                placeholder="PG"
+                                                value={line.dgPackingGroup}
+                                                isEditing={isEditing}
+                                                onChange={(val) => handleLineChange(i, 'dgPackingGroup', val)}
+                                            />
+                                        </div>
+                                    </div>
+                                    <label className="flex items-center gap-2 mt-1">
+                                        <input
+                                            type="checkbox"
+                                            checked={line.isDangerousGoods || false}
+                                            onChange={(e) => handleLineChange(i, 'isDangerousGoods', e.target.checked)}
+                                            disabled={!isEditing}
+                                            className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-200"
+                                        />
+                                        <span className="text-xs text-slate-500">DG</span>
+                                    </label>
+                                </td>
+                            </tr>
+                        ))}
+    </tbody>
+</table>
+            </div >
+        </section >
+    </div >
+
+    {/* Sidebar */ }
+    < div className = "space-y-6" >
+        <Comments documentId={doc.id} user={user} />
+        <History documentId={!doc.isShipment ? doc.id : undefined} shipmentId={doc.isShipment ? doc.id : undefined} />
+    </div >
+</div >
+    );
 }

@@ -243,6 +243,62 @@ router.post('/:id/link-party', async (req, res) => {
 
 const { validateShipment } = require('../services/validation/engine');
 
+// GET /shipments/:id/validation
+router.get('/:id/validation', async (req, res) => {
+    try {
+        const shipment = await prisma.shipment.findUnique({
+            where: { id: req.params.id },
+            include: { lineItems: true }
+        });
+
+        if (!shipment) return res.status(404).json({ error: 'Shipment not found' });
+
+        const result = await validateShipment(shipment, shipment.lineItems || []);
+
+        // Filter dismissed codes
+        // Parse meta if string, or use empty object
+        const meta = shipment.meta ? JSON.parse(shipment.meta) : {};
+        const dismissed = meta.dismissedValidationCodes || [];
+
+        if (dismissed.length > 0) {
+            result.issues = result.issues.filter(issue => !dismissed.includes(issue.code));
+        }
+
+        res.json(result);
+    } catch (error) {
+        console.error('Validation error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// POST /shipments/:id/validation/dismiss
+router.post('/:id/validation/dismiss', async (req, res) => {
+    try {
+        const { code } = req.body;
+        if (!code) return res.status(400).json({ error: 'Code required' });
+
+        const shipment = await prisma.shipment.findUnique({ where: { id: req.params.id } });
+        if (!shipment) return res.status(404).json({ error: 'Shipment not found' });
+
+        const meta = shipment.meta ? JSON.parse(shipment.meta) : {};
+        if (!meta.dismissedValidationCodes) meta.dismissedValidationCodes = [];
+
+        if (!meta.dismissedValidationCodes.includes(code)) {
+            meta.dismissedValidationCodes.push(code);
+
+            await prisma.shipment.update({
+                where: { id: req.params.id },
+                data: { meta: JSON.stringify(meta) }
+            });
+        }
+
+        res.json({ success: true, dismissedCodes: meta.dismissedValidationCodes });
+    } catch (error) {
+        console.error('Dismiss error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // ... Validation handler ...
 
 // POST /shipments/:id/documents

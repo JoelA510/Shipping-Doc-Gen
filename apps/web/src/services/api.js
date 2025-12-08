@@ -182,6 +182,14 @@ export const api = {
         return res;
     },
 
+    dismissIssue: async (shipmentId, code) => {
+        return request(`/shipments/${shipmentId}/validation/dismiss`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code })
+        });
+    },
+
     generateDocument: async (shipmentId, type) => {
         return request(`/shipments/${shipmentId}/documents`, {
             method: 'POST',

@@ -40,14 +40,15 @@ class ValidationEngine {
     /**
      * @param {Object} shipment ShipmentV1
      * @param {Object[]} lineItems ShipmentLineItemV1[]
-     * @returns {ValidationSummary}
+     * @returns {Promise<ValidationSummary>}
      */
-    validate(shipment, lineItems) {
+    async validate(shipment, lineItems) {
         const issues = [];
 
         for (const rule of this.rules) {
             try {
-                const ruleIssues = rule.validate(shipment, lineItems);
+                // Support both sync and async rules
+                const ruleIssues = await rule.validate(shipment, lineItems);
                 if (Array.isArray(ruleIssues)) {
                     issues.push(...ruleIssues);
                 }
