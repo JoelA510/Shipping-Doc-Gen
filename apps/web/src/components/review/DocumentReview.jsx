@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Save, ArrowLeft, Edit2, AlertTriangle, X, Plus, Trash2, BookmarkPlus } from 'lucide-react';
 import { api, API_URL } from '../../services/api';
 import EditableField from '../common/EditableField';
+import PartySelector from '../common/PartySelector';
 import Comments from './Comments';
 import History from './History';
 
@@ -64,23 +65,67 @@ export default function DocumentReview({ document, onBack, user }) {
     };
 
     const AddressBlock = ({ title, data, isEditing, onChange }) => {
+        const [isSelectorOpen, setIsSelectorOpen] = useState(false);
+
+        const handleSelectParty = (party) => {
+            // Map party fields to document header fields
+            onChange('name', party.name);
+            onChange('address', party.addressLine1);
+            onChange('address2', party.addressLine2 || '');
+            onChange('city', party.city);
+            onChange('state', party.stateOrProvince || '');
+            onChange('zip', party.postalCode);
+            onChange('country', party.countryCode);
+            onChange('partyId', party.id); // Store the ID!
+
+            setIsSelectorOpen(false);
+        };
+
         // Fallback for legacy string data or null
         if (!data || typeof data !== 'object') {
             return (
-                <EditableField
-                    label={title}
-                    value={data || ''}
-                    isEditing={isEditing}
-                    onChange={(v) => onChange('name', v)} // Treat string as name
-                />
+                <div className="relative">
+                    <EditableField
+                        label={title}
+                        value={data || ''}
+                        isEditing={isEditing}
+                        onChange={(v) => onChange('name', v)}
+                    />
+                    {isEditing && (
+                        <div className="absolute top-0 right-0">
+                            <button
+                                onClick={() => setIsSelectorOpen(true)}
+                                className="text-xs text-primary-600 hover:text-primary-800 underline"
+                            >
+                                Address Book
+                            </button>
+                        </div>
+                    )}
+                    <PartySelector
+                        isOpen={isSelectorOpen}
+                        onClose={() => setIsSelectorOpen(false)}
+                        onSelect={handleSelectParty}
+                    />
+                </div>
             );
         }
 
         return (
-            <div className="space-y-3 border border-slate-200 p-4 rounded-lg bg-slate-50/50">
-                <h4 className="font-medium text-slate-700 text-sm flex items-center gap-2">
-                    {title}
-                </h4>
+            <div className="space-y-3 border border-slate-200 p-4 rounded-lg bg-slate-50/50 relative">
+                <div className="flex justify-between items-center">
+                    <h4 className="font-medium text-slate-700 text-sm flex items-center gap-2">
+                        {title}
+                    </h4>
+                    {isEditing && (
+                        <button
+                            onClick={() => setIsSelectorOpen(true)}
+                            className="text-xs flex items-center gap-1 text-primary-600 hover:text-primary-800 hover:bg-primary-50 px-2 py-1 rounded transition-colors"
+                        >
+                            <BookmarkPlus className="w-3 h-3" /> Address Book
+                        </button>
+                    )}
+                </div>
+
                 <div className="space-y-3">
                     <EditableField label="Name" value={data.name} isEditing={isEditing} onChange={(v) => onChange('name', v)} />
                     <EditableField label="Address" value={data.address} isEditing={isEditing} onChange={(v) => onChange('address', v)} />
@@ -93,7 +138,20 @@ export default function DocumentReview({ document, onBack, user }) {
                         <EditableField label="Zip" value={data.zip} isEditing={isEditing} onChange={(v) => onChange('zip', v)} />
                         <EditableField label="Country" value={data.country} isEditing={isEditing} onChange={(v) => onChange('country', v)} />
                     </div>
+                    {/* Hidden Party ID indicator */}
+                    {data.partyId && (
+                        <div className="text-xs text-emerald-600 flex items-center gap-1 mt-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            Linked to Address Book
+                        </div>
+                    )}
                 </div>
+
+                <PartySelector
+                    isOpen={isSelectorOpen}
+                    onClose={() => setIsSelectorOpen(false)}
+                    onSelect={handleSelectParty}
+                />
             </div>
         );
     };

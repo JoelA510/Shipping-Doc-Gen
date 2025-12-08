@@ -179,6 +179,12 @@ model Shipment {
   // Relations
   lineItems         ShipmentLineItem[]
   documents         ShipmentDocument[]
+
+  // Snapshots (Phase 2)
+  shipperSnapshot   String? // JSON
+  consigneeSnapshot String? // JSON
+  forwarderSnapshot String? // JSON
+  brokerSnapshot    String? // JSON
   
   // Legacy/Other relations (keeping if needed, or deprecating)
   // documentId is likely the "source reference" document

@@ -12,6 +12,8 @@ const complianceRouter = require('./routes/compliance');
 const templatesRouter = require('./routes/templates');
 const notificationsRouter = require('./routes/notifications');
 const carriersRouter = require('./routes/carriers');
+const partiesRouter = require('./routes/parties');
+const shipmentsRouter = require('./routes/shipments');
 const port = process.env.PORT || 3001;
 const app = express();
 
@@ -68,6 +70,8 @@ app.use('/compliance', requireAuth, complianceRouter);
 app.use('/templates', requireAuth, templatesRouter);
 app.use('/notifications', requireAuth, notificationsRouter);
 app.use('/carriers', requireAuth, carriersRouter);
+app.use('/parties', requireAuth, partiesRouter);
+app.use('/shipments', requireAuth, shipmentsRouter);
 app.use('/', requireAuth, statusRouter);
 
 // 404 handler

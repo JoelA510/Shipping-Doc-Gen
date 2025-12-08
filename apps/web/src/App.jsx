@@ -1,18 +1,3 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
-import { LogOut, Ship } from 'lucide-react';
-import UploadZone from './components/upload/UploadZone';
-import DocumentReviewPage from './components/review/DocumentReviewPage';
-
-// ... imports
-
-
-import Login from './components/auth/Login';
-import NotificationBell from './components/common/NotificationBell';
-import { api } from './services/api';
-
-// Protected Route Wrapper
 const ProtectedRoute = ({ children, user, loading }) => {
     const location = useLocation();
 
@@ -33,11 +18,21 @@ const Layout = ({ user, onLogout, children }) => {
         <div className="min-h-screen bg-slate-50 flex flex-col">
             <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                        <div className="bg-primary-600 p-2 rounded-lg">
-                            <Ship className="w-6 h-6 text-white" />
-                        </div>
-                        <h1 className="text-xl font-bold text-slate-900 tracking-tight">Shipping Doc Gen</h1>
+                    <div className="flex items-center gap-8">
+                        <Link to="/" className="flex items-center gap-3">
+                            <div className="bg-primary-600 p-2 rounded-lg">
+                                <Ship className="w-6 h-6 text-white" />
+                            </div>
+                            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Shipping Doc Gen</h1>
+                        </Link>
+
+                        <nav className="hidden md:flex items-center space-x-4">
+                            <Link to="/" className="text-slate-600 hover:text-primary-600 font-medium px-3 py-2 rounded-md hover:bg-slate-50">Dashboard</Link>
+                            <Link to="/parties" className="text-slate-600 hover:text-primary-600 font-medium px-3 py-2 rounded-md hover:bg-slate-50 flex items-center gap-2">
+                                <Users className="w-4 h-4" />
+                                Address Book
+                            </Link>
+                        </nav>
                     </div>
 
                     <div className="flex items-center gap-4">
@@ -63,7 +58,7 @@ const Layout = ({ user, onLogout, children }) => {
             <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
                 {children}
             </main>
-        </div>
+        </div >
     );
 };
 
@@ -159,6 +154,21 @@ function AppContent() {
                                     user={user}
                                     onBack={() => navigate('/')}
                                 />
+                            </motion.div>
+                        </Layout>
+                    </ProtectedRoute>
+                } />
+
+                <Route path="/parties" element={
+                    <ProtectedRoute user={user} loading={loading}>
+                        <Layout user={user} onLogout={handleLogout}>
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -20 }}
+                                transition={{ duration: 0.3 }}
+                            >
+                                <PartiesPage />
                             </motion.div>
                         </Layout>
                     </ProtectedRoute>
