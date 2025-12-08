@@ -226,4 +226,25 @@ router.post('/:id/link-party', async (req, res) => {
     }
 });
 
+const { validateShipment } = require('../services/validation/engine');
+
+// GET /shipments/:id/validation
+router.get('/:id/validation', async (req, res) => {
+    try {
+        const shipment = await prisma.shipment.findUnique({
+            where: { id: req.params.id },
+            include: { lineItems: true } // Line items required for validation
+        });
+
+        if (!shipment) return res.status(404).json({ error: 'Shipment not found' });
+
+        const validationResult = validateShipment(shipment, shipment.lineItems);
+        res.json(validationResult);
+
+    } catch (error) {
+        console.error('Validation error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;

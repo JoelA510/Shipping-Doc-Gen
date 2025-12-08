@@ -14,6 +14,8 @@ const notificationsRouter = require('./routes/notifications');
 const carriersRouter = require('./routes/carriers');
 const partiesRouter = require('./routes/parties');
 const shipmentsRouter = require('./routes/shipments');
+const importRouter = require('./routes/import');
+
 const port = process.env.PORT || 3001;
 const app = express();
 
@@ -53,11 +55,6 @@ app.get('/health', (req, res) => {
 // We need to get the config again or pass it down
 const filesRouter = require('./routes/files');
 
-// Serve static files (generated PDFs) - PUBLIC ACCESS
-// We need to get the config again or pass it down
-// const config = validateEnv();
-// app.use('/files', express.static(config.storagePath));
-
 // Public routes
 app.use('/auth', authRouter);
 app.use('/metrics', metricsRouter);
@@ -72,6 +69,7 @@ app.use('/notifications', requireAuth, notificationsRouter);
 app.use('/carriers', requireAuth, carriersRouter);
 app.use('/parties', requireAuth, partiesRouter);
 app.use('/shipments', requireAuth, shipmentsRouter);
+app.use('/import', requireAuth, importRouter);
 app.use('/', requireAuth, statusRouter);
 
 // 404 handler

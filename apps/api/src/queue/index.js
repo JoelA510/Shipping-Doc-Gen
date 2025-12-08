@@ -1,4 +1,4 @@
-const { parseFile } = require('@shipping-doc-gen/ingestion');
+const { parseFile } = require('@formwaypoint/ingestion');
 const { Queue, Worker } = require('bullmq');
 const IORedis = require('ioredis');
 const { v4: uuidv4 } = require('uuid');

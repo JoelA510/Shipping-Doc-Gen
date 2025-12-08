@@ -1,3 +1,16 @@
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, Link } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
+import { LogOut, Ship, Users, FileSpreadsheet } from 'lucide-react';
+import UploadZone from './components/upload/UploadZone';
+import DocumentReviewPage from './components/review/DocumentReviewPage';
+import ShipmentReviewPage from './components/review/ShipmentReviewPage';
+import PartiesPage from './components/parties/PartiesPage';
+import ImportPage from './components/import/ImportPage';
+import NotificationBell from './components/notifications/NotificationBell';
+import Login from './components/auth/Login';
+import { api } from './services/api';
+
 const ProtectedRoute = ({ children, user, loading }) => {
     const location = useLocation();
 
@@ -28,6 +41,10 @@ const Layout = ({ user, onLogout, children }) => {
 
                         <nav className="hidden md:flex items-center space-x-4">
                             <Link to="/" className="text-slate-600 hover:text-primary-600 font-medium px-3 py-2 rounded-md hover:bg-slate-50">Dashboard</Link>
+                            <Link to="/import" className="text-slate-600 hover:text-primary-600 font-medium px-3 py-2 rounded-md hover:bg-slate-50 flex items-center gap-2">
+                                <FileSpreadsheet className="w-4 h-4" />
+                                Import
+                            </Link>
                             <Link to="/parties" className="text-slate-600 hover:text-primary-600 font-medium px-3 py-2 rounded-md hover:bg-slate-50 flex items-center gap-2">
                                 <Users className="w-4 h-4" />
                                 Address Book
@@ -141,6 +158,27 @@ function AppContent() {
                     </ProtectedRoute>
                 } />
 
+                <Route path="/import" element={
+                    <ProtectedRoute user={user} loading={loading}>
+                        <Layout user={user} onLogout={handleLogout}>
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -20 }}
+                                transition={{ duration: 0.3 }}
+                            >
+                                <ImportPage />
+                            </motion.div>
+                        </Layout>
+                    </ProtectedRoute>
+                } />
+
+                <Route path="/shipments/new" element={
+                    <ProtectedRoute>
+                        <DocumentReviewPage />
+                    </ProtectedRoute>
+                } />
+
                 <Route path="/documents/:id" element={
                     <ProtectedRoute user={user} loading={loading}>
                         <Layout user={user} onLogout={handleLogout}>
@@ -153,6 +191,24 @@ function AppContent() {
                                 <DocumentReviewPage
                                     user={user}
                                     onBack={() => navigate('/')}
+                                />
+                            </motion.div>
+                        </Layout>
+                    </ProtectedRoute>
+                } />
+
+                <Route path="/shipments/:id" element={
+                    <ProtectedRoute user={user} loading={loading}>
+                        <Layout user={user} onLogout={handleLogout}>
+                            <motion.div
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                transition={{ duration: 0.3 }}
+                            >
+                                <ShipmentReviewPage
+                                    user={user}
+                                    onBack={() => navigate('/import')}
                                 />
                             </motion.div>
                         </Layout>

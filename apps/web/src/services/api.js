@@ -130,5 +130,16 @@ export const api = {
         return request(`/parties/${id}`, {
             method: 'DELETE'
         });
+    },
+
+    // Shipments
+    getShipment: async (id) => {
+        return request(`/shipments/${id}`);
+    },
+
+    getValidation: async (id) => {
+        const res = await request(`/shipments/${id}/validation`);
+        // Ensure we return the issues array or Summary object structure expected
+        return res;
     }
 };
