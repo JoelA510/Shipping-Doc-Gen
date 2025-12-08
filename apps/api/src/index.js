@@ -68,6 +68,8 @@ app.use('/templates', requireAuth, templatesRouter);
 app.use('/notifications', requireAuth, notificationsRouter);
 app.use('/carriers', requireAuth, carriersRouter);
 app.use('/parties', requireAuth, partiesRouter);
+app.use('/items', requireAuth, require('./routes/items'));
+app.use('/shipment-templates', requireAuth, require('./routes/shipmentTemplates'));
 app.use('/shipments', requireAuth, shipmentsRouter);
 app.use('/import', requireAuth, importRouter);
 app.use('/', requireAuth, statusRouter);

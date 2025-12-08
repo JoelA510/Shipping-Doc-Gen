@@ -1,15 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const partyService = require('../services/parties/partyService');
+const itemService = require('../services/items/itemService');
 
-// GET /parties (Address Book)
+// GET /items
 router.get('/', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 20;
         const offset = (page - 1) * limit;
 
-        const result = await partyService.listParties({
+        const result = await itemService.listItems({
             search: req.query.search,
             limit,
             offset
@@ -25,52 +25,46 @@ router.get('/', async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('List parties error:', error);
         res.status(500).json({ error: error.message });
     }
 });
 
-// POST /parties
+// POST /items
 router.post('/', async (req, res) => {
     try {
-        const userId = req.user?.id || 'unknown';
-        // Basic validation
-        if (!req.body.name || !req.body.addressLine1 || !req.body.city || !req.body.countryCode) {
-            return res.status(400).json({ error: 'Missing required fields' });
-        }
-
-        const party = await partyService.createParty(req.body, userId);
-        res.status(201).json(party);
+        const userId = req.user?.id;
+        const item = await itemService.createItem(req.body, userId);
+        res.status(201).json(item);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(400).json({ error: error.message });
     }
 });
 
-// GET /parties/:id
+// GET /items/:id
 router.get('/:id', async (req, res) => {
     try {
-        const party = await partyService.getParty(req.params.id);
-        if (!party) return res.status(404).json({ error: 'Party not found' });
-        res.json(party);
+        const item = await itemService.getItem(req.params.id);
+        if (!item) return res.status(404).json({ error: 'Item not found' });
+        res.json(item);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-// PUT /parties/:id
+// PUT /items/:id
 router.put('/:id', async (req, res) => {
     try {
-        const updated = await partyService.updateParty(req.params.id, req.body);
-        res.json(updated);
+        const item = await itemService.updateItem(req.params.id, req.body);
+        res.json(item);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-// DELETE /parties/:id
+// DELETE /items/:id
 router.delete('/:id', async (req, res) => {
     try {
-        await partyService.deleteParty(req.params.id);
+        await itemService.deleteItem(req.params.id);
         res.status(204).send();
     } catch (error) {
         res.status(500).json({ error: error.message });

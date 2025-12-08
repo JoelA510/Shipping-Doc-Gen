@@ -5,7 +5,26 @@ import { LogOut, Ship, Users, FileSpreadsheet } from 'lucide-react';
 import UploadZone from './components/upload/UploadZone';
 import DocumentReviewPage from './components/review/DocumentReviewPage';
 import ShipmentReviewPage from './components/review/ShipmentReviewPage';
-import PartiesPage from './components/parties/PartiesPage';
+import AddressBookPage from './components/address-book/AddressBookPage';
+import ProductLibraryPage from './components/items/ProductLibraryPage';
+import TemplateLibraryPage from './components/templates/TemplateLibraryPage';
+
+// ...
+
+<Route path="/parties" element={
+    <ProtectedRoute user={user} loading={loading}>
+        <Layout user={user} onLogout={handleLogout}>
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+            >
+                <AddressBookPage />
+            </motion.div>
+        </Layout>
+    </ProtectedRoute>
+} />
 import ImportPage from './components/import/ImportPage';
 import NotificationBell from './components/notifications/NotificationBell';
 import Login from './components/auth/Login';
@@ -48,6 +67,14 @@ const Layout = ({ user, onLogout, children }) => {
                             <Link to="/parties" className="text-slate-600 hover:text-primary-600 font-medium px-3 py-2 rounded-md hover:bg-slate-50 flex items-center gap-2">
                                 <Users className="w-4 h-4" />
                                 Address Book
+                            </Link>
+                            <Link to="/items" className="text-slate-600 hover:text-primary-600 font-medium px-3 py-2 rounded-md hover:bg-slate-50 flex items-center gap-2">
+                                <Package className="w-4 h-4" />
+                                Products
+                            </Link>
+                            <Link to="/templates" className="text-slate-600 hover:text-primary-600 font-medium px-3 py-2 rounded-md hover:bg-slate-50 flex items-center gap-2">
+                                <FileSpreadsheet className="w-4 h-4" />
+                                Templates
                             </Link>
                         </nav>
                     </div>
@@ -224,7 +251,37 @@ function AppContent() {
                                 exit={{ opacity: 0, y: -20 }}
                                 transition={{ duration: 0.3 }}
                             >
-                                <PartiesPage />
+                                <AddressBookPage />
+                            </motion.div>
+                        </Layout>
+                    </ProtectedRoute>
+                } />
+
+                <Route path="/items" element={
+                    <ProtectedRoute user={user} loading={loading}>
+                        <Layout user={user} onLogout={handleLogout}>
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -20 }}
+                                transition={{ duration: 0.3 }}
+                            >
+                                <ProductLibraryPage />
+                            </motion.div>
+                        </Layout>
+                    </ProtectedRoute>
+                } />
+
+                <Route path="/templates" element={
+                    <ProtectedRoute user={user} loading={loading}>
+                        <Layout user={user} onLogout={handleLogout}>
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -20 }}
+                                transition={{ duration: 0.3 }}
+                            >
+                                <TemplateLibraryPage />
                             </motion.div>
                         </Layout>
                     </ProtectedRoute>

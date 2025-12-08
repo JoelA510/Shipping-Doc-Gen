@@ -132,6 +132,45 @@ export const api = {
         });
     },
 
+    // Items (Product Library)
+    getItems: async (params) => {
+        const query = new URLSearchParams(params).toString();
+        return request(`/items?${query}`);
+    },
+    createItem: async (data) => {
+        return request('/items', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+    },
+    updateItem: async (id, data) => {
+        return request(`/items/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+    },
+    deleteItem: async (id) => {
+        return request(`/items/${id}`, { method: 'DELETE' });
+    },
+
+    // Shipment Templates
+    getShipmentTemplates: async (params) => {
+        const query = new URLSearchParams(params).toString();
+        return request(`/shipment-templates?${query}`);
+    },
+    createShipmentTemplate: async (data) => {
+        return request('/shipment-templates', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+    },
+    getShipmentTemplate: async (id) => {
+        return request(`/shipment-templates/${id}`);
+    },
+
     // Shipments
     getShipment: async (id) => {
         return request(`/shipments/${id}`);

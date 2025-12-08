@@ -248,6 +248,12 @@ model Party {
   
   taxIdOrEori     String?
 
+  // Address Book metadata
+  isAddressBookEntry Boolean @default(false)
+  createdByUserId    String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
   // Reverse relations
   shipmentsAsShipper    Shipment[] @relation("ShipmentShipper")
   shipmentsAsConsignee  Shipment[] @relation("ShipmentConsignee")
@@ -282,4 +288,44 @@ model PickupRequest {
   status         String
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+model Item {
+  id              String   @id @default(uuid())
+  sku             String   @unique
+  description     String
+  htsCode         String?
+  countryOfOrigin String?
+  eccn            String?
+  
+  defaultUnitValue Float?
+  defaultNetWeightKg Float?
+  uom             String?
+
+  createdByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ShipmentTemplate {
+  id              String   @id @default(uuid())
+  name            String
+  description     String?
+  
+  // Header Defaults
+  shipperId       String?
+  consigneeId     String?
+  forwarderId     String?
+  brokerId        String?
+  incoterm        String?
+  currency        String?
+  originCountry   String?
+  destinationCountry String?
+  
+  // Line Items Snapshot
+  lineItems       String? // JSON string of ShipmentLineItemTemplate[]
+
+  createdByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
