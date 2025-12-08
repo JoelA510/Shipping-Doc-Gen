@@ -8,26 +8,7 @@ export default function ShipmentList() {
     const [loading, setLoading] = useState(true);
     const [importing, setImporting] = useState(false);
 
-    const loadShipments = async () => {
-        try {
-            setLoading(true);
-            // Assuming api.getShipments exists or we use raw request
-            // We need to add getShipments to api.js or use request directly. 
-            // api.js doesn't have a generic "get all shipments" exposed simply, but route exists.
-            // Let's assume we add it or use request.
-            // Looking at api.js, there is NO getShipments list method. I should add it.
-            // For now, I'll use raw request in this component or fix api.js next.
-            // Let's fix api.js properly first? I already viewed it and missed it.
-            // Actually, I'll just use a direct fetch wrapper to be safe or add it.
-            // Wait, api.js has `getShipment(id)`. 
-            // I'll add `getShipments` to api.js in the next step.
-            // For now, I'll assume valid API call.
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-    };
+
 
     // I will write this file assuming api.getShipments() exists, and then ensuring I add it.
     useEffect(() => {
