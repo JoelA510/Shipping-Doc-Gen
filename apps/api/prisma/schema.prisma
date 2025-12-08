@@ -176,7 +176,11 @@ model Shipment {
   status            String   @default("draft") // draft, imported, validated, booked, completed
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+
   createdByUserId   String
+  
+  // JSON storage for flexibility (e.g. validation overrides)
+  meta              String?
 
   // Relations
   lineItems         ShipmentLineItem[]

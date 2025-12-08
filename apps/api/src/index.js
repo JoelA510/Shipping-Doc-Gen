@@ -51,10 +51,6 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Serve static files (generated PDFs) - PUBLIC ACCESS
-// We need to get the config again or pass it down
-const filesRouter = require('./routes/files');
-
 // Public routes
 app.use('/auth', authRouter);
 app.use('/metrics', metricsRouter);
@@ -67,6 +63,7 @@ app.use('/compliance', requireAuth, complianceRouter);
 app.use('/templates', requireAuth, templatesRouter);
 app.use('/notifications', requireAuth, notificationsRouter);
 app.use('/carriers', requireAuth, carriersRouter);
+app.use('/reports', requireAuth, require('./routes/reports')); // New Reports Router
 app.use('/parties', requireAuth, partiesRouter);
 app.use('/items', requireAuth, require('./routes/items'));
 app.use('/shipment-templates', requireAuth, require('./routes/shipmentTemplates'));

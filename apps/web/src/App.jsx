@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { LogOut, Ship, Users, FileSpreadsheet } from 'lucide-react';
+import { LogOut, Ship, Users, FileSpreadsheet, Package, BarChart3 } from 'lucide-react';
+import ReportsPage from './components/reports/ReportsPage';
 import UploadZone from './components/upload/UploadZone';
 import DocumentReviewPage from './components/review/DocumentReviewPage';
 import ShipmentReviewPage from './components/review/ShipmentReviewPage';
@@ -75,6 +76,10 @@ const Layout = ({ user, onLogout, children }) => {
                             <Link to="/templates" className="text-slate-600 hover:text-primary-600 font-medium px-3 py-2 rounded-md hover:bg-slate-50 flex items-center gap-2">
                                 <FileSpreadsheet className="w-4 h-4" />
                                 Templates
+                            </Link>
+                            <Link to="/reports" className="text-slate-600 hover:text-primary-600 font-medium px-3 py-2 rounded-md hover:bg-slate-50 flex items-center gap-2">
+                                <BarChart3 className="w-4 h-4" />
+                                Reports
                             </Link>
                         </nav>
                     </div>
@@ -282,6 +287,21 @@ function AppContent() {
                                 transition={{ duration: 0.3 }}
                             >
                                 <TemplateLibraryPage />
+                            </motion.div>
+                        </Layout>
+                    </ProtectedRoute>
+                } />
+
+                <Route path="/reports" element={
+                    <ProtectedRoute user={user} loading={loading}>
+                        <Layout user={user} onLogout={handleLogout}>
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -20 }}
+                                transition={{ duration: 0.3 }}
+                            >
+                                <ReportsPage />
                             </motion.div>
                         </Layout>
                     </ProtectedRoute>
