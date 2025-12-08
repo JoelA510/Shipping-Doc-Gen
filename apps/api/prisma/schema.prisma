@@ -127,23 +127,140 @@ model CarrierAccount {
   @@index([userId])
 }
 
-model Shipment {
-  id             String   @id @default(uuid())
-  documentId     String?
-  carrier        String
-  serviceType    String
-  trackingNumber String
-  labelUrl       String?
-  cost           Float?
-  status         String   // created, picked_up, in_transit, delivered, cancelled
-  aesNumber      String?  // ITN
-  pickupId       String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  
-  document Document? @relation(fields: [documentId], references: [id])
+// --- Canonical Schema V1 ---
 
-  @@index([documentId])
+model Shipment {
+  id                String   @id @default(uuid())
+  schemaVersion     String   @default("shipment.v1")
+  
+  // External Refs
+  erpOrderId        String?
+  erpShipmentId     String?
+
+  // Parties
+  shipperId         String
+  consigneeId       String
+  forwarderId       String?
+  brokerId          String?
+
+  shipper           Party    @relation("ShipmentShipper", fields: [shipperId], references: [id])
+  consignee         Party    @relation("ShipmentConsignee", fields: [consigneeId], references: [id])
+  forwarder         Party?   @relation("ShipmentForwarder", fields: [forwarderId], references: [id])
+  broker            Party?   @relation("ShipmentBroker", fields: [brokerId], references: [id])
+
+  // Commercial / Financial
+  incoterm          String
+  currency          String
+  totalCustomsValue Float
+
+  // Weights & Packages
+  totalWeightKg     Float
+  numPackages       Int
+
+  // Routing
+  originCountry     String
+  destinationCountry String
+  carrierCode       String?
+  serviceLevelCode  String?
+  trackingNumber    String?
+
+  // Compliance Flags
+  aesRequired       Boolean?
+  aesItn            String?
+  eeiExemptionCode  String?
+  hasDangerousGoods Boolean?
+
+  // Metadata
+  status            String   @default("draft") // draft, imported, validated, booked, completed
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  createdByUserId   String
+
+  // Relations
+  lineItems         ShipmentLineItem[]
+  documents         ShipmentDocument[]
+  
+  // Legacy/Other relations (keeping if needed, or deprecating)
+  // documentId is likely the "source reference" document
+  sourceDocumentId  String?
+  sourceDocument    Document? @relation(fields: [sourceDocumentId], references: [id])
+
+  @@index([sourceDocumentId])
+}
+
+model ShipmentLineItem {
+  id                String   @id @default(uuid())
+  shipmentId        String
+  
+  // Product info
+  sku               String?
+  description       String
+  quantity          Float    // Using Float for safety, schema says number
+  uom               String
+  
+  // Value
+  unitValue         Float
+  extendedValue     Float
+
+  // Weights
+  netWeightKg       Float
+  grossWeightKg     Float?
+
+  // Compliance / Customs
+  htsCode           String
+  countryOfOrigin   String
+  eccn              String?
+
+  // Dangerous Goods
+  isDangerousGoods  Boolean?
+  dgUnNumber        String?
+  dgHazardClass     String?
+  dgPackingGroup    String?
+
+  shipment          Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId])
+}
+
+model Party {
+  id              String   @id @default(uuid())
+  name            String
+  
+  addressLine1    String
+  addressLine2    String?
+  city            String
+  stateOrProvince String?
+  postalCode      String
+  countryCode     String
+
+  contactName     String?
+  phone           String?
+  email           String?
+  
+  taxIdOrEori     String?
+
+  // Reverse relations
+  shipmentsAsShipper    Shipment[] @relation("ShipmentShipper")
+  shipmentsAsConsignee  Shipment[] @relation("ShipmentConsignee")
+  shipmentsAsForwarder  Shipment[] @relation("ShipmentForwarder")
+  shipmentsAsBroker     Shipment[] @relation("ShipmentBroker")
+}
+
+model ShipmentDocument {
+  id          String   @id @default(uuid())
+  shipmentId  String
+  
+  type        String   // input, output
+  format      String   // pdf, csv, xlsx, json
+  
+  label       String
+  storageKey  String
+  
+  createdAt   DateTime @default(now())
+
+  shipment    Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  
+  @@index([shipmentId])
 }
 
 model PickupRequest {

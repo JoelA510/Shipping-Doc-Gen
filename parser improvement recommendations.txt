@@ -1,0 +1,353 @@
+## Assumptions
+
+* Goal: make `Shipping-Doc-Gen` ingest CIPL PDFs and output compliance-ready data (HTS-grouped, sanity-checked, AES-friendly).
+* You are fine with refactors if they increase correctness and maintainability.
+* Core parse entrypoint is `parsePdf` in `services/ingestion/src/pdf/parser.js`, which calls `normalizeDocument` from `../utils`.
+* Shared library is intended to host HTS validation/normalisation (`packages/shared/normalization`).
+
+I will treat my “CIPL brain” as requirements for a new normalisation layer, not as ad-hoc formatting.
+
+---
+
+## 1. Where my logic fits in your current pipeline
+
+From the code we can see:
+
+* `parsePdf(buffer)`:
+
+  * Extracts text via `pdf-parse`.
+  * Calls:
+
+    * `parseHeader(text)`.
+    * `parseLines(text)` for invoice/packing lines.
+  * If no lines, falls back to OCR via an external service.
+  * If still no lines, injects a fake line (`PARSING_CHECK`, htsCode `"000000"`) and returns.
+  * Finally calls `normalizeDocument(rawDoc)` and returns its result.
+
+* `parseLines`:
+
+  * Splits rows and uses:
+
+    * A huge `noiseRegex` to skip headings/currencies.
+    * `smashedMathRegex` to detect `total price qty` patterns and derive qty/price/value.
+    * `htsRegex` to capture raw `htsCode` strings.
+    * A packing-list scanner that guesses weights from triples of floats, then merges by part and quantity.
+  * Hard-codes `countryOfOrigin: 'GB'` for every invoice line.
+
+Right now, `normalizeDocument` is the choke-point where you should inject almost all of the CIPL-style logic:
+
+* HTS/Schedule B validation and correction.
+* Grouping by HTS + Domestic/Foreign.
+* Weight/value checksums and discrepancy flags.
+
+That keeps `parseLines` focused on extraction and leaves semantics/validation to dedicated modules.
+
+---
+
+## 2. Make HTS/Schedule-B handling a first-class shared module
+
+You already planned `packages/shared/normalization/` for HTS helpers. That is exactly where my logic belongs.
+
+### 2.1. Build a `htsNormalizer` module
+
+New module in `packages/shared/normalization/hts.ts` (or `.js` if you stay CommonJS for now):
+
+* **Responsibilities:**
+
+  * Validate a candidate HTS/Schedule-B code string.
+  * Normalise presentation (`"9031.90.5800"` -> `"9031.90.0000"` when that’s the live statistical number).
+  * Return canonical 56-char description (the same style I keep using).
+  * Optionally tag “domestic-only”, “dual-use”, etc. for future ECCN logic.
+
+* **API sketch:**
+
+  ```ts
+  export interface HtsInfo {
+    codeRaw: string;        // as seen on invoice
+    codeCanonical: string;  // validated Schedule B
+    description: string;    // <= 56 chars
+    isValid: boolean;
+    needsCorrection: boolean;
+    correctionReason?: string;
+  }
+
+  export function normalizeHts(code: string): HtsInfo {
+    // regex sanity check: /^\d{4}\.\d{2}\.\d{4}$/
+    // lookup in internal Schedule-B JSON (bundled in this package)
+    // map obsolete -> current statistical numbers
+  }
+  ```
+
+* **Data source:**
+
+  * Generate a JSON map from the official Schedule-B dataset (offline script; not at runtime) and commit it.
+  * Keyed by 10-digit code; values include description and status (active/obsolete).
+
+### 2.2. Call it from `normalizeDocument`, not from `parseLines`
+
+* Keep `parseLines`’s `htsRegex` as a dumb extractor (string only).
+* In `normalizeDocument`:
+
+  * Run every `line.htsCode` (or empty string) through `normalizeHts`.
+  * Attach `line.htsInfo`.
+  * If `needsCorrection`, record a `corrections[]` array for later presentation.
+
+This mirrors what I’ve been doing: “Corrections needed” first, then grouped output by corrected HTS.
+
+---
+
+## 3. Add a grouping/summary stage after normalisation
+
+Your current parser never aggregates. My logic always ends up with:
+
+* Group by HTS (post-correction).
+* Split by D/F if needed.
+* Show quantity, total weight, and total value, along with checksums.
+
+You should codify that as an explicit “summary layer”:
+
+### 3.1. Define a `ShipmentSummary` model
+
+In `packages/schemas` or `packages/shared/types`:
+
+```ts
+export interface LineItem {
+  partNumber: string;
+  description: string;
+  quantity: number;
+  valueUsd: number;
+  unitPrice: number;
+  htsCode: string;           // canonical
+  htsDescription: string;
+  countryOfOrigin: string;   // ISO alpha-2 or alpha-3
+  netWeightKg: number;
+  grossWeightKg: number;
+  domesticFlag: 'D' | 'F';
+}
+
+export interface HtsGroupSummary {
+  htsCode: string;
+  htsDescription: string;
+  domesticFlag: 'D' | 'F';
+  totalQuantity: number;
+  totalNetKg: number;
+  totalGrossKg: number;
+  totalValueUsd: number;
+}
+
+export interface ShipmentSummary {
+  header: {/* existing fields */};
+  lines: LineItem[];
+  htsGroups: HtsGroupSummary[];
+  totals: {
+    quantity: number;
+    netKg: number;
+    grossKg: number;
+    valueUsd: number;
+  };
+  discrepancies: string[]; // checksum / validation issues
+  htsCorrections: {
+    partNumber: string;
+    original: string;
+    corrected: string;
+    description: string;
+  }[];
+}
+```
+
+### 3.2. Implement grouping in `normalizeDocument`
+
+`normalizeDocument(rawDoc)` should:
+
+1. Produce normalised `LineItem`s:
+
+   * Clean HTS via `normalizeHts`.
+   * Map `countryOfOrigin` -> `domesticFlag` based on config (e.g. `US` -> `D`, everything else -> `F`).
+   * Ensure weights are numeric and default to 0 if missing (but separately tracked).
+
+2. Aggregate:
+
+   ```ts
+   const groupKey = (line: LineItem) =>
+     `${line.htsCode}__${line.domesticFlag}`;
+
+   const groupMap = new Map<string, HtsGroupSummary>();
+
+   for (const line of lines) {
+     const key = groupKey(line);
+     const summary = groupMap.get(key) ?? {
+       htsCode: line.htsCode,
+       htsDescription: line.htsDescription,
+       domesticFlag: line.domesticFlag,
+       totalQuantity: 0,
+       totalNetKg: 0,
+       totalGrossKg: 0,
+       totalValueUsd: 0,
+     };
+     summary.totalQuantity += line.quantity;
+     summary.totalNetKg += line.netWeightKg;
+     summary.totalGrossKg += line.grossWeightKg;
+     summary.totalValueUsd += line.valueUsd;
+     groupMap.set(key, summary);
+   }
+   ```
+
+3. Compute checksums:
+
+   ```ts
+   const totals = {
+     quantity: lines.reduce((s, l) => s + l.quantity, 0),
+     netKg:    lines.reduce((s, l) => s + l.netWeightKg, 0),
+     grossKg:  lines.reduce((s, l) => s + l.grossWeightKg, 0),
+     valueUsd: lines.reduce((s, l) => s + l.valueUsd, 0),
+   };
+   ```
+
+4. Compare against header/packing totals:
+
+   * If any delta exceeds tolerance (e.g. `> 0.01 kg` or `> $0.10`), push a message into `discrepancies`.
+
+That gives you the same invariant checks I use before I output anything.
+
+---
+
+## 4. Fix obvious ingestion anti-patterns before layering logic
+
+### 4.1. Stop hard-coding country of origin
+
+`parseLines` currently sets `countryOfOrigin: 'GB'` for all invoice lines. That is actively dangerous.
+
+* Instead, either:
+
+  * Parse COO from the line/nearby columns, or
+  * Look it up from an internal item master (e.g., Supabase table keyed by part number), or
+  * Leave it `null` and let `normalizeDocument` flag it as missing.
+
+My logic depends heavily on per-line COO to split D/F groupings correctly. With a hard-coded `GB`, all your AES and SLI outputs will be wrong.
+
+### 4.2. Replace the `PARSING_CHECK` fake line
+
+Current fallback:
+
+```js
+if (rawDoc.lines.length === 0) {
+  rawDoc.lines.push({
+    partNumber: "PARSING_CHECK",
+    description: "Manual Review Required",
+    quantity: 1, netWeightKg: 1, valueUsd: 1, htsCode: "000000", countryOfOrigin: "US"
+  });
+}
+```
+
+Problems:
+
+* Pollutes downstream logic with bogus data.
+* Makes it harder to detect genuine parse failures.
+
+Instead:
+
+* Have `parsePdf` return something like:
+
+  ```js
+  return {
+    header: parseHeader(text),
+    lines: [],
+    meta: { ...meta, parseError: 'NO_LINES_PARSED' }
+  };
+  ```
+* Let the API layer or `normalizeDocument` treat `lines.length === 0` as a hard error and surface that to the user.
+
+Then you can still create a “Manual review required” *presentation* artefact, but not as fake data.
+
+### 4.3. Tame `noiseRegex`
+
+The enormous `noiseRegex` makes parsing brittle:
+
+* Split it into:
+
+  * A small set of headings.
+  * A separate currency symbol list.
+  * Possibly a configurable ignore list.
+
+Example:
+
+```js
+const noiseTokens = ['PAGE', 'TOTAL', 'SUBTOTAL', 'AMOUNT', ...];
+const currencyTokens = ['USD', 'EUR', 'GBP', ...];
+
+const noiseRegex = new RegExp(
+  `^(?:${[...noiseTokens, ...currencyTokens].join('|')})$`,
+  'i'
+);
+```
+
+This makes it much easier to maintain and test.
+
+---
+
+## 5. Integrate with AES/EEI output cleanly
+
+You already have an `AESService` for EEI formatting. Right now it expects a `commodity` array with `description`, `scheduleB`, and `value`. Once you have `ShipmentSummary`:
+
+* Create a mapping from `HtsGroupSummary` to `AESService` commodity lines:
+
+  * `scheduleB` = `htsCode`.
+  * `description` = `htsDescription`.
+  * `value` = `totalValueUsd`.
+  * `domestic/foreign` -> `D/F` used to set `DomesticOrForeignIndicator`.
+
+* Ensure that only valid `htsCode` (after `normalizeHts`) get into AES.
+
+* Use `htsCorrections` to warn if the input document used obsolete numbers; keep both original and corrected for audit logs.
+
+This is how my workflow naturally flows: parse -> normalise HTS -> group -> sanity check -> feed into AES.
+
+---
+
+## 6. Refactor plan (incremental but meaningful)
+
+Given that you are fine with refactors, I’d suggest this order:
+
+1. **Refactor ingestion:**
+
+   * Remove hard-coded COO.
+   * Remove fake `PARSING_CHECK` line.
+   * Factor weight merge logic into its own function to make it testable.
+2. **Implement shared HTS normalisation:**
+
+   * Create `packages/shared/normalization/hts.(ts|js)` with `normalizeHts`.
+   * Wire it into `normalizeDocument`.
+3. **Introduce `ShipmentSummary`:**
+
+   * Add types and implement grouping and checksums in `normalizeDocument`.
+   * Expose both raw lines and `htsGroups` via the API.
+4. **Integrate AES:**
+
+   * Map `ShipmentSummary.htsGroups` to `AESService.formatForAESDirect`.
+   * Add tests that compare expected AES XML against fixtures.
+5. **Add contract tests with real CIPL PDFs:**
+
+   * Use a handful of your “golden” PDFs (where you and I agree on the output).
+   * Assert:
+
+     * HTS corrections match expected mappings.
+     * Grouped quantities/weights/values match your manually validated results.
+
+---
+
+## Sanity Check
+
+1. **Verify:**
+
+   * This integration path keeps `parseLines` as a low-level extractor and moves all “CIPL brain” logic into `normalizeDocument` and shared normalisation modules, matching how I build answers.
+   * HTS validation, D/F splitting, grouping, and checksums are all expressible as deterministic transformations on the parsed lines.
+
+2. **Edge case:**
+
+   * If a PDF has an unusual layout (no “smashed” totals, multi-currency, or weird weight formats), `parseLines` may still fail. With the proposed changes, that failure will now be explicit (no fake `PARSING_CHECK`), and `discrepancies` in `ShipmentSummary` can point to the missing weights or HTS fields, instead of silently emitting wrong data.
+
+3. **Efficiency:**
+
+   * HTS lookup is O(1) per line via a hash map; grouping is O(n); checksums are O(n). These are negligible compared to PDF text extraction and OCR. The refactor is mostly structural, not algorithmically heavier.
+
+If you want, next step can be: I draft a concrete `normalizeHts` implementation and a `normalizeDocument` sketch that fits your current Node/CommonJS setup.

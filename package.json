@@ -1,0 +1,13 @@
+{
+    "name": "shipping-doc-gen-monorepo",
+    "private": true,
+    "workspaces": [
+        "apps/*",
+        "packages/*"
+    ],
+    "scripts": {
+        "test": "npm run test --workspaces",
+        "lint": "npm run lint --workspaces",
+        "typecheck": "npm run typecheck --workspaces"
+    }
+}
