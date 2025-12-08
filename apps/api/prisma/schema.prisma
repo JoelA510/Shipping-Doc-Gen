@@ -66,11 +66,13 @@ model AuditLog {
   action     String
   userId     String?
   documentId String?
+  shipmentId String?
   details    String?  // JSON string
   timestamp  DateTime @default(now())
 
   user     User?     @relation(fields: [userId], references: [id])
   document Document? @relation(fields: [documentId], references: [id])
+  shipment Shipment? @relation(fields: [shipmentId], references: [id])
 }
 
 model HtsCode {
@@ -179,6 +181,7 @@ model Shipment {
   // Relations
   lineItems         ShipmentLineItem[]
   documents         ShipmentDocument[]
+  auditLogs         AuditLog[]
 
   // Snapshots (Phase 2)
   shipperSnapshot   String? // JSON

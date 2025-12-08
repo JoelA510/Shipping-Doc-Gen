@@ -68,6 +68,9 @@ router.get('/:id', async (req, res) => {
     }
 });
 
+const { generateDocument } = require('../services/documents/generator');
+const historian = require('../services/history/historian');
+
 // POST /shipments
 router.post('/', async (req, res) => {
     try {
@@ -84,7 +87,6 @@ router.post('/', async (req, res) => {
             numPackages,
             originCountry,
             destinationCountry,
-            // ... other fields
         } = req.body;
 
         // Validation for required fields (can be enhanced with Zod later)
@@ -123,6 +125,9 @@ router.post('/', async (req, res) => {
             }
         });
 
+        // Audit Log
+        await historian.logShipmentEvent(shipment.id, 'created', userId, { origin: 'api' });
+
         res.status(201).json(shipment);
     } catch (error) {
         console.error('Shipment create error:', error);
@@ -133,6 +138,7 @@ router.post('/', async (req, res) => {
 // PUT /shipments/:id
 router.put('/:id', async (req, res) => {
     try {
+        const userId = req.user?.id || 'unknown';
         const {
             shipperId,
             consigneeId,
@@ -172,7 +178,7 @@ router.put('/:id', async (req, res) => {
             updateData.consigneeId = consigneeId;
             updateData.consigneeSnapshot = await getPartySnapshot(consigneeId);
         }
-        if (forwarderId !== undefined) { // forwarderId can be null/undefined logic depends on update style. Simplified here.
+        if (forwarderId !== undefined) {
             if (forwarderId !== currentShipment.forwarderId) {
                 updateData.forwarderId = forwarderId;
                 updateData.forwarderSnapshot = await getPartySnapshot(forwarderId);
@@ -190,6 +196,9 @@ router.put('/:id', async (req, res) => {
             data: updateData
         });
 
+        // Audit Log
+        await historian.logShipmentEvent(updated.id, 'updated', userId, { fields: Object.keys(req.body) });
+
         res.json(updated);
 
     } catch (error) {
@@ -201,6 +210,7 @@ router.put('/:id', async (req, res) => {
 // POST /shipments/:id/link-party
 router.post('/:id/link-party', async (req, res) => {
     try {
+        const userId = req.user?.id || 'unknown';
         const { role, partyId } = req.body;
         if (!['shipper', 'consignee', 'forwarder', 'broker'].includes(role)) {
             return res.status(400).json({ error: 'Invalid role' });
@@ -219,6 +229,9 @@ router.post('/:id/link-party', async (req, res) => {
             data: updateData
         });
 
+        // Audit Log
+        await historian.logShipmentEvent(updated.id, 'party_linked', userId, { role, partyId });
+
         res.json(updated);
     } catch (error) {
         console.error('Link party error:', error);
@@ -226,39 +239,38 @@ router.post('/:id/link-party', async (req, res) => {
     }
 });
 
+// ... GET handlers ...
+
 const { validateShipment } = require('../services/validation/engine');
 
-// GET /shipments/:id/validation
-router.get('/:id/validation', async (req, res) => {
-    try {
-        const shipment = await prisma.shipment.findUnique({
-            where: { id: req.params.id },
-            include: { lineItems: true } // Line items required for validation
-        });
-
-        if (!shipment) return res.status(404).json({ error: 'Shipment not found' });
-
-        const validationResult = validateShipment(shipment, shipment.lineItems);
-        res.json(validationResult);
-
-    } catch (error) {
-        console.error('Validation error:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-const { generateDocument } = require('../services/documents/generator');
+// ... Validation handler ...
 
 // POST /shipments/:id/documents
 router.post('/:id/documents', async (req, res) => {
     try {
+        const userId = req.user?.id || 'unknown';
         const { type } = req.body; // 'commercial-invoice' or 'packing-list'
         if (!type) return res.status(400).json({ error: 'Document type required' });
 
-        const result = await generateDocument(req.params.id, type);
+        const result = await generateDocument(req.params.id, type, { userId });
         res.status(201).json(result);
     } catch (error) {
         console.error('Document generation error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// GET /shipments/:id/history
+router.get('/:id/history', async (req, res) => {
+    try {
+        const logs = await prisma.auditLog.findMany({
+            where: { shipmentId: req.params.id },
+            orderBy: { timestamp: 'desc' },
+            include: { user: { select: { username: true } } }
+        });
+        res.json(logs);
+    } catch (error) {
+        console.error('History error:', error);
         res.status(500).json({ error: error.message });
     }
 });

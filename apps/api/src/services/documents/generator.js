@@ -88,7 +88,6 @@ async function generateDocument(shipmentId, type, options = {}) {
             margin: { top: '20px', bottom: '20px', left: '20px', right: '20px' }
         });
 
-        // 5. Create Document Record
         const document = await prisma.document.create({
             data: {
                 shipmentId,
@@ -99,6 +98,11 @@ async function generateDocument(shipmentId, type, options = {}) {
                 meta: JSON.stringify({ label: viewModel.metadata.title, type })
             }
         });
+
+        const historian = require('../../services/history/historian');
+        const userId = options.userId || 'system';
+        await historian.logDocumentEvent(document.id, 'generated', userId, { type, filename });
+        await historian.logShipmentEvent(shipmentId, 'document_generated', userId, { documentId: document.id, type });
 
         return {
             documentId: document.id,

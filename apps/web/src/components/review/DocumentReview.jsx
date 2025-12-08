@@ -497,9 +497,8 @@ export default function DocumentReview({ document, onBack, user, onGenerate }) {
                 {/* Sidebar */}
                 <div className="space-y-6">
                     <Comments documentId={doc.id} user={user} />
-                    <History documentId={doc.id} />
+                    <History documentId={!doc.isShipment ? doc.id : undefined} shipmentId={doc.isShipment ? doc.id : undefined} />
                 </div>
             </div>
-        </div>
-    );
+            );
 }

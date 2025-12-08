@@ -2,17 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { History as HistoryIcon, Clock } from 'lucide-react';
 import { api } from '../../services/api';
 
-export default function History({ documentId }) {
+export default function History({ documentId, shipmentId }) {
     const [logs, setLogs] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        loadHistory();
-    }, [documentId]);
+        if (documentId || shipmentId) {
+            loadHistory();
+        }
+    }, [documentId, shipmentId]);
 
     const loadHistory = async () => {
         try {
-            const data = await api.getHistory(documentId);
+            let data;
+            if (shipmentId) {
+                data = await api.getShipmentHistory(shipmentId);
+            } else {
+                data = await api.getHistory(documentId);
+            }
             setLogs(data);
         } catch (error) {
             console.error('Failed to load history:', error);
