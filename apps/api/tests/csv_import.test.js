@@ -9,6 +9,12 @@ jest.mock('../src/config/env', () => ({
     })
 }));
 
+jest.mock('nodemailer', () => ({
+    createTransporter: jest.fn().mockReturnValue({
+        sendMail: jest.fn().mockResolvedValue(true)
+    })
+}));
+
 const request = require('supertest');
 const fs = require('fs');
 const path = require('path');

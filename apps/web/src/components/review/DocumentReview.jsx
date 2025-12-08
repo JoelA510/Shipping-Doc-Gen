@@ -5,8 +5,6 @@ import EditableField from '../common/EditableField';
 import PartySelector from '../common/PartySelector';
 import Comments from './Comments';
 import History from './History';
-import History from './History';
-import History from './History';
 import CarrierRatePanel from './CarrierRatePanel';
 import ForwarderBookingPanel from './ForwarderBookingPanel';
 import AesPanel from './AesPanel';

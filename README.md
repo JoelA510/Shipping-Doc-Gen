@@ -2,22 +2,87 @@
 
 FormWaypoint is a shipping documentation automation platform that converts diverse Commercial Invoices & Packing Lists (CIPL) into canonical shipment data and produces compliant SLI/BOL outputs.
 
+**Current Status:** Phase 3 Completed (Integrations & Advanced Compliance)
+
 ## Monorepo Layout
-- `apps/web` – Next.js 15 + React 19 client for upload, review, and export workflows.
-- `apps/api` – Node.js 22 service orchestrating ingestion, canonical data management, and exports.
-- `services/ocr` – Python 3.11 FastAPI microservice for OCR and document parsing.
-- `packages/schemas` – Source of truth JSON Schemas (e.g., canonical shipment contract).
-- `packages/shared` – Generated types and normalization/util packages shared across services.
-- `docs` – Charter, architecture notes, and process guardrails.
-- `infra` – Infrastructure-as-code and CI/CD automation scripts.
+
+- `apps/web` – React 18 + Vite frontend for document upload, review, and export/booking management.
+- `apps/api` – Node.js/Express backend for orchestration, OCR, compliance checks, and ERP integration.
+- `apps/api/prisma` – Database schema and seed data.
+- `docs` – Project documentation and architecture notes.
+
+## Features Implemented
+
+### Phase 1: Foundation
+- **Canonical Schema**: Defined `Shipment`, `Party`, `LineItem` models.
+- **OCR Pipeline**: Ingestion of PDF documents into structured data.
+- **Validation Engine**: Rules for HTS codes, Incoterms, and mandatory fields.
+- **Audit Logging**: Comprehensive history tracking for all shipment changes.
+
+### Phase 2: User Experience
+- **Address Book**: Global repository for reusable `Shipper` / `Consignee` profiles.
+- **Item Master**: Product library for storing commonly shipped items (HTS, Unit Price).
+- **Interactive Review**: `DocumentReview` interface for correcting OCR data.
+- **Reporting**: Visual dashboards for shipment volume, value, and error rates.
+
+### Phase 3: Integrations & Compliance
+- **Carrier Rate Shopping**: Pilot integration for quoting and booking parcel shipments.
+- **Freight Forwarder Handoff**: Generation of booking emails and CSV bundles for legacy forwarders.
+- **ERP Feedback Loop**: Configurable export system (CSV/JSON/Webhook) to push completion data to SAP/JDE.
+- **Advanced Compliance**:
+    - **AES/EEI**: filing requirement determination and ITN capture.
+    - **Dangerous Goods**: Auto-fill helper using UN Number reference.
+    - **Sanctions**: Restricted Party Screening (DPS) integration hooks.
 
 ## Getting Started
-1. Review the [project charter](docs/project-charter.md) for vision, scope, and success criteria.
-2. Align on canonical data contracts within [`packages/schemas`](packages/schemas/README.md).
-3. Use architecture guides under [`docs/architecture`](docs/architecture) to scaffold ingestion, exports, and security.
 
-## Roadmap Alignment
-This structure mirrors the roadmap phases:
-- Phase 1 focuses on requirements, schema definition, and guardrails captured in `docs/` and `packages/schemas/`.
-- Phase 2–4 build on the ingestion and OCR scaffolds defined in `apps/api` and `services/ocr`.
-- Later phases leverage shared templates and exporters documented under `docs/architecture/output-generation.md`.
+### Prerequisites
+- Node.js 18+
+- SQLite (default) or other Prisma-supported DB
+
+### Installation
+
+1.  **Clone Request**:
+    ```bash
+    git clone <repo-url>
+    cd Shipping-Doc-Gen
+    ```
+
+2.  **Install Dependencies**:
+    ```bash
+    npm install
+    # or
+    yarn install
+    ```
+
+3.  **Database Setup**:
+    ```bash
+    cd apps/api
+    npx prisma migrate dev --name init
+    npx prisma db seed
+    ```
+    *This creates the SQLite DB and populates it with test shipments, forwarder profiles, and compliance reference data.*
+
+### Running locally
+
+1.  **Start API Server**:
+    In `apps/api`:
+    ```bash
+    npm run dev
+    # Runs on http://localhost:3000
+    ```
+
+2.  **Start Frontend**:
+    In `apps/web`:
+    ```bash
+    npm run dev
+    # Runs on http://localhost:5173
+    ```
+
+3.  **Access Application**:
+    Open browser to `http://localhost:5173`.
+
+## Architecture Guide
+For more details on specific subsystems:
+- [Output Generation & ERP Exports](docs/architecture/output-generation.md)
+- [Validation & Overrides](docs/architecture/validation.md)

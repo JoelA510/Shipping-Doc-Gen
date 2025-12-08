@@ -13,6 +13,8 @@ const CARRIER_PROVIDERS = {
     FEDEX: 'fedex'        // Future
 };
 
+const BaseCarrierGateway = require('./baseCarrierGateway');
+
 /**
  * Factory to get the correct gateway implementation.
  * @param {string} carrierAccountId 
@@ -35,27 +37,6 @@ async function getCarrierGateway(carrierAccountId) {
             return new MockAggregator(account);
         default:
             throw new Error(`Unsupported carrier provider: ${account.provider}`);
-    }
-}
-
-/**
- * Base class for Carrier Gateways to ensure interface compliance.
- */
-class BaseCarrierGateway {
-    constructor(account) {
-        this.account = account;
-    }
-
-    async getRates(shipment, lineItems) {
-        throw new Error('Method "getRates" not implemented');
-    }
-
-    async bookShipment(bookingRequest) {
-        throw new Error('Method "bookShipment" not implemented');
-    }
-
-    async trackShipment(trackingNumber) {
-        throw new Error('Method "trackShipment" not implemented');
     }
 }
 

@@ -11,24 +11,8 @@ import ProductLibraryPage from './components/items/ProductLibraryPage';
 import TemplateLibraryPage from './components/templates/TemplateLibraryPage';
 import ErpExportDashboard from './components/erp/ErpExportDashboard';
 
-// ...
-
-<Route path="/parties" element={
-    <ProtectedRoute user={user} loading={loading}>
-        <Layout user={user} onLogout={handleLogout}>
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3 }}
-            >
-                <AddressBookPage />
-            </motion.div>
-        </Layout>
-    </ProtectedRoute>
-} />
 import ImportPage from './components/import/ImportPage';
-import NotificationBell from './components/notifications/NotificationBell';
+import NotificationBell from './components/common/NotificationBell';
 import Login from './components/auth/Login';
 import { api } from './services/api';
 

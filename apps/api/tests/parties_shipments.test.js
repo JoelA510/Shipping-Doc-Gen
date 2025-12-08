@@ -50,6 +50,13 @@ const mockPrisma = {
     $disconnect: jest.fn()
 };
 
+// Mock Prisma Client constructor
+jest.mock('@prisma/client', () => {
+    return {
+        PrismaClient: jest.fn().mockImplementation(() => mockPrisma)
+    };
+});
+
 jest.mock('../src/queue', () => {
     return {
         createJob: jest.fn().mockResolvedValue({ id: 'mock-job-id' }),

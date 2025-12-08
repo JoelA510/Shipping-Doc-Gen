@@ -1,4 +1,4 @@
-const { BaseCarrierGateway } = require('./carrierGateway');
+const BaseCarrierGateway = require('./baseCarrierGateway');
 const { v4: uuidv4 } = require('uuid');
 
 class MockAggregator extends BaseCarrierGateway {

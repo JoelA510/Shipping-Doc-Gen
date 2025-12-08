@@ -129,7 +129,7 @@ describe('App Integration', () => {
         // Trigger mock upload
         fireEvent.click(screen.getByText('Mock Upload'));
 
-        await waitFor(() => expect(screen.getByText(/Review & Edit/i)).toBeInTheDocument(), { timeout: 15000 });
+        await waitFor(() => expect(screen.getByText(/Shipment Details/i)).toBeInTheDocument(), { timeout: 15000 });
     });
 
     it('allows editing and saving document', async () => {
@@ -151,7 +151,7 @@ describe('App Integration', () => {
         fireEvent.click(screen.getByText('Mock Upload'));
 
         // Wait for review screen
-        await waitFor(() => expect(screen.getByText(/Review & Edit/i)).toBeInTheDocument(), { timeout: 15000 });
+        await waitFor(() => expect(screen.getByText(/Shipment Details/i)).toBeInTheDocument(), { timeout: 15000 });
 
         // Change Shipper
         const shipperInput = screen.getByDisplayValue('Test Shipper');
@@ -187,13 +187,13 @@ describe('App Integration', () => {
         fireEvent.click(screen.getByText('Mock Upload'));
 
         // Wait for review screen
-        await waitFor(() => expect(screen.getByText(/Review & Edit/i)).toBeInTheDocument(), { timeout: 15000 });
+        await waitFor(() => expect(screen.getByText(/Shipment Details/i)).toBeInTheDocument(), { timeout: 15000 });
 
         // Exit edit mode
-        fireEvent.click(screen.getByText('Cancel'));
+        fireEvent.click(screen.getByText('Stop Editing'));
 
         // Click Export
-        fireEvent.click(screen.getByText('Export SLI'));
+        fireEvent.click(screen.getByText('Generate PDF'));
 
         // Verify API call
         await waitFor(() => expect(api.triggerExport).toHaveBeenCalledWith('doc-123', 'sli', 'sli'));

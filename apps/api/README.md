@@ -1,15 +1,31 @@
 # API Workspace
 
-Node.js 22 service responsible for ingestion orchestration, canonical shipment CRUD, exports, and Supabase integration.
+Node.js/Express service orchestrating ingestion, shipment management, and external integrations.
 
-## Planned Structure
-- `src/modules/ingestion` for upload endpoints, queue producers, and job tracking.
-- `src/modules/shipments` for canonical CRUD + validation.
-- `src/modules/exports` for template selection, renderer orchestration, and artifact storage.
-- `src/modules/auth` for Supabase JWT verification and RBAC enforcement.
-- `tests/` for Jest or Vitest-based unit/integration coverage.
+## Key Services
 
-## Phase 1 Actions
-- Bootstrap Express/Fastify service with TypeScript and Supabase client.
-- Define environment configuration (`REACT_APP_*` where exposed to frontend) and secret handling.
-- Implement schema validation middleware using shared canonical schema package.
+- **`ShipmentService`**: Core CRUD for shipments, managing relations to Parties and Line Items.
+- **`ValidationService`**: Runs rule sets (e.g., "Missing HTS Code") and manages Override objects.
+- **`OcrService`**: Handles file uploads and mock extraction processing.
+- **`ComplianceService`**: Evaluates AES filing requirements, looks up Dangerous Goods (UN numbers), and screens parties.
+- **`BookingPackageService`**: Generates email bodies and CSV attachments for Freight Forwarder handoffs.
+- **`ExportRunner`**: Executes scheduled or manual ERP data push jobs (CSV/File or Webhook/HTTP).
+
+## Project Structure
+
+- `src/index.js` - Entry point and server configuration
+- `src/routes/` - API route definitions
+    - `shipments.js` - Main shipment operations
+    - `compliance.js` - DG/AES/Sanctions endpoints
+    - `erp.js` - Export configuration and job management
+    - `forwarders.js` - Profile management and booking generation
+- `src/services/` - Business logic modules
+- `prisma/` - Database schema (`schema.prisma`) and seed script (`seed.js`)
+
+## Testing
+
+Run unit tests:
+```bash
+npm test
+```
+(Uses Jest)
