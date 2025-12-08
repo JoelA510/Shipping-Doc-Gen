@@ -5,7 +5,9 @@ import EditableField from '../common/EditableField';
 import PartySelector from '../common/PartySelector';
 import Comments from './Comments';
 import History from './History';
+import History from './History';
 import CarrierRatePanel from './CarrierRatePanel';
+import ForwarderBookingPanel from './ForwarderBookingPanel';
 
 export default function DocumentReview({ document, onBack, user, onGenerate }) {
     const [doc, setDoc] = useState(document);
@@ -449,18 +451,27 @@ export default function DocumentReview({ document, onBack, user, onGenerate }) {
 
                     <div className="space-y-6">
                         {doc.isShipment && (
-                            <CarrierRatePanel
-                                shipmentId={doc.id}
-                                shipmentStatus={doc.status}
-                                onBook={(result) => {
-                                    setDoc(prev => ({
-                                        ...prev,
-                                        status: 'booked',
-                                        carrierCode: 'MOCK',
-                                        trackingNumber: result.trackingNumber
-                                    }));
-                                }}
-                            />
+                            <>
+                                <CarrierRatePanel
+                                    shipmentId={doc.id}
+                                    shipmentStatus={doc.status}
+                                    onBook={(result) => {
+                                        setDoc(prev => ({
+                                            ...prev,
+                                            status: 'booked',
+                                            carrierCode: 'MOCK',
+                                            trackingNumber: result.trackingNumber
+                                        }));
+                                    }}
+                                />
+                                <ForwarderBookingPanel
+                                    shipmentId={doc.id}
+                                    shipmentStatus={doc.status}
+                                    onBook={() => {
+                                        setDoc(prev => ({ ...prev, status: 'booked' }));
+                                    }}
+                                />
+                            </>
                         )}
                         <Comments documentId={doc.id} user={user} />
                         <History documentId={!doc.isShipment ? doc.id : undefined} shipmentId={doc.isShipment ? doc.id : undefined} />

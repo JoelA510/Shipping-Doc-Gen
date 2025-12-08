@@ -196,5 +196,30 @@ export const api = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ type })
         });
+    },
+
+    // Forwarders (Epic 15)
+    getForwarders: async () => {
+        return request('/forwarders');
+    },
+
+    createForwarder: async (data) => {
+        return request('/forwarders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+    },
+
+    generateBookingPackage: async (shipmentId, profileId) => {
+        // Post to the route mounted at /forwarders/shipments/:id/booking
+        // Wait, index.js says mounted at /forwarders. 
+        // routes/forwarders.js has router.post('/shipments/:id/booking', ...)
+        // So URL is /forwarders/shipments/:id/booking
+        return request(`/forwarders/shipments/${shipmentId}/booking`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ profileId })
+        });
     }
 };

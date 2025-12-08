@@ -13,6 +13,19 @@ const fixtures = require('../tests/fixtures/shipments');
 async function main() {
     console.log('Start seeding ...');
 
+    // 0. Ensure System User Exists
+    const systemUser = await prisma.user.upsert({
+        where: { username: 'system-seed' },
+        update: {},
+        create: {
+            id: 'system-seed',
+            username: 'system-seed',
+            password: 'hashed-password-placeholder', // In real app, use bcrypt
+            role: 'admin'
+        }
+    });
+    console.log('Ensured System User exists');
+
     // 1. Seed Reference Data
     for (const hts of HTS_CODES) {
         await prisma.htsCode.upsert({
@@ -93,6 +106,37 @@ async function main() {
     // Invalid one might fail validation if we ran it, but DB insert should be fine (schema is loose)
     await createShipmentFromFixture(fixtures.shipments.invalid);
     console.log('Seeded Invalid Shipment');
+
+    // 4. Seed Forwarder Profile (Epic 15)
+    await prisma.forwarderProfile.create({
+        data: {
+            userId: 'system-seed',
+            name: 'Global Freight Logistics',
+            emailToJson: JSON.stringify(['bookings@globalfreight.com']),
+            emailCcJson: JSON.stringify(['ops@globalfreight.com']),
+            emailSubjectTemplate: 'Booking Request: {{shipment.id}} - {{shipper.name}} -> {{consignee.name}}',
+            emailBodyTemplate: `Dear Team,
+
+Please find attached the booking request for the following shipment:
+
+Ref: {{shipment.id}}
+Ready Date: {{date}}
+Pieces: {{summary.lineItemCount}}
+Weight: {{summary.totalWeightPkg}} kg
+Value: {{summary.totalValueUsd}} USD
+
+Shipper: {{shipper.name}}
+Consignee: {{consignee.name}}
+
+Please confirm receipt.
+
+Best regards,
+Shipping Team`,
+            dataBundleFormat: 'CSV',
+            attachmentTypesJson: JSON.stringify(['SLI', 'Commercial Invoice'])
+        }
+    });
+    console.log('Seeded Forwarder Profile');
 
     console.log('Seeding finished.');
 }
