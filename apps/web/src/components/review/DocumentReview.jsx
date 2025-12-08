@@ -6,7 +6,7 @@ import PartySelector from '../common/PartySelector';
 import Comments from './Comments';
 import History from './History';
 
-export default function DocumentReview({ document, onBack, user }) {
+export default function DocumentReview({ document, onBack, user, onGenerate }) {
     const [doc, setDoc] = useState(document);
     const [isEditing, setIsEditing] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
@@ -206,7 +206,16 @@ export default function DocumentReview({ document, onBack, user }) {
         setIsExporting(true);
         setMessage(null);
         try {
-            const response = await api.triggerExport(doc.id, 'sli', selectedTemplate);
+            let response;
+            if (doc.isShipment && typeof onGenerate === 'function') {
+                // Use custom generation handler for Shipments
+                // Map template selection to document type
+                const type = selectedTemplate === 'sli' ? 'commercial-invoice' : 'packing-list'; // TODO: Better mapping
+                response = await onGenerate(type);
+            } else {
+                // Default legacy behavior for Documents
+                response = await api.triggerExport(doc.id, 'sli', selectedTemplate);
+            }
 
             if (response && response.url) {
                 // Open URL in new window/tab - browser will handle the download
@@ -266,9 +275,8 @@ export default function DocumentReview({ document, onBack, user }) {
                                 className="border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200"
                                 aria-label="Select export template"
                             >
-                                <option value="sli">Standard SLI</option>
-                                <option value="nippon">Nippon Express</option>
-                                <option value="ceva">CEVA Logistics</option>
+                                <option value="sli">Commercial Invoice</option>
+                                <option value="nippon">Packing List</option>
                             </select>
                             <button
                                 onClick={handleExport}

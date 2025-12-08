@@ -247,4 +247,20 @@ router.get('/:id/validation', async (req, res) => {
     }
 });
 
+const { generateDocument } = require('../services/documents/generator');
+
+// POST /shipments/:id/documents
+router.post('/:id/documents', async (req, res) => {
+    try {
+        const { type } = req.body; // 'commercial-invoice' or 'packing-list'
+        if (!type) return res.status(400).json({ error: 'Document type required' });
+
+        const result = await generateDocument(req.params.id, type);
+        res.status(201).json(result);
+    } catch (error) {
+        console.error('Document generation error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;

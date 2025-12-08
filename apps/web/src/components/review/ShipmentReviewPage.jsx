@@ -73,9 +73,10 @@ export default function ShipmentReviewPage({ user, onBack }) {
 
     return (
         <DocumentReview
-            document={document}
+            document={{ ...document, isShipment: true }}
             user={user}
             onBack={() => navigate('/import')} // Or history
+            onGenerate={async (type) => api.generateDocument(id, type)}
         />
     );
 }
