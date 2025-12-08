@@ -1,128 +1,136 @@
 const express = require('express');
 const router = express.Router();
-const CarrierService = require('../services/carriers');
-const { prisma } = require('../queue');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+const { getCarrierGateway } = require('../services/carriers/carrierGateway');
+const { generateDocument } = require('../services/documents/generator');
 
-// Get active carrier accounts
-router.get('/accounts', async (req, res) => {
+/**
+ * GET /api/shipments/:id/rates
+ * Trigger a rate shop for a shipment.
+ */
+router.post('/:id/rates', async (req, res) => {
     try {
-        const userId = req.user?.id;
-        const accounts = await prisma.carrierAccount.findMany({
-            where: { userId, isActive: true },
-            select: {
-                id: true,
-                provider: true,
-                accountNumber: true, // In real app, mask this
-                createdAt: true
-            }
+        const { id } = req.params;
+        const shipment = await prisma.shipment.findUnique({
+            where: { id },
+            include: { lineItems: true }
         });
-        res.json({ data: accounts });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Add carrier account
-router.post('/accounts', async (req, res) => {
-    try {
-        const userId = req.user?.id;
-        const { provider, accountNumber, credentials } = req.body;
-
-        // Validate credentials with carrier
-        // In a real app, we'd instantiate the adapter and call validateAccount()
-        // const adapter = new FedExAdapter(credentials, accountNumber);
-        // await adapter.validateAccount();
-
-        const account = await prisma.carrierAccount.create({
-            data: {
-                userId,
-                provider: provider.toLowerCase(),
-                accountNumber,
-                credentials: JSON.stringify(credentials) // Encrypt this in production!
-            }
-        });
-
-        res.status(201).json({
-            id: account.id,
-            provider: account.provider,
-            accountNumber: account.accountNumber
-        });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Shop for rates
-router.post('/rates', async (req, res) => {
-    try {
-        const userId = req.user?.id;
-        const { shipment } = req.body;
 
         if (!shipment) {
-            return res.status(400).json({ error: 'Shipment details required' });
+            return res.status(404).json({ error: 'Shipment not found' });
         }
 
-        const rates = await CarrierService.shopRates(userId, shipment);
-        res.json({ data: rates });
-    } catch (error) {
-        console.error('Rate shopping error:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
+        // In a real app, we'd find all active carrier accounts for this user/org
+        // For pilot, we find the first active "mock" provider or any active one
+        const carrierAccounts = await prisma.carrierAccount.findMany({
+            where: { isActive: true }
+        });
 
-// Create shipment (generate label)
-router.post('/shipments', async (req, res) => {
-    try {
-        const userId = req.user?.id;
-        const { provider, shipment, documentId } = req.body;
+        if (carrierAccounts.length === 0) {
+            return res.status(400).json({ error: 'No active carrier accounts found. Please contact admin.' });
+        }
 
-        const adapter = await CarrierService.getAdapter(provider, userId);
-        const result = await adapter.createShipment(shipment);
-
-        // Save shipment record
-        const savedShipment = await prisma.shipment.create({
-            data: {
-                documentId,
-                carrier: provider,
-                serviceType: result.serviceType,
-                trackingNumber: result.trackingNumber,
-                labelUrl: result.labelUrl,
-                cost: result.cost,
-                status: 'created'
+        const ratesPromises = carrierAccounts.map(async (account) => {
+            try {
+                const gateway = await getCarrierGateway(account.id);
+                const rates = await gateway.getRates(shipment, shipment.lineItems);
+                // Tag rates with the account ID so we know which one to book with
+                return rates.map(r => ({ ...r, carrierAccountId: account.id }));
+            } catch (err) {
+                console.error(`Failed to get rates from account ${account.id}:`, err);
+                return [];
             }
         });
 
-        res.status(201).json(savedShipment);
+        const nestedRates = await Promise.all(ratesPromises);
+        const allRates = nestedRates.flat();
+
+        // Update meta with the latest quote for audit (optional, or just return them)
+        // We'll upsert the meta record
+        await prisma.shipmentCarrierMeta.upsert({
+            where: { shipmentId: id },
+            update: { rateQuoteJson: JSON.stringify(allRates) },
+            create: { shipmentId: id, rateQuoteJson: JSON.stringify(allRates) }
+        });
+
+        res.json(allRates);
     } catch (error) {
-        console.error('Create shipment error:', error);
-        res.status(500).json({ error: error.message });
+        console.error('Rate shop error:', error);
+        res.status(500).json({ error: 'Failed to retrieve rates' });
     }
 });
 
-// Schedule pickup
-router.post('/pickups', async (req, res) => {
+/**
+ * POST /api/shipments/:id/book
+ * Book a specific rate.
+ */
+router.post('/:id/book', async (req, res) => {
     try {
-        const userId = req.user?.id;
-        const { provider, pickupRequest } = req.body;
+        const { id } = req.params;
+        const { carrierAccountId, serviceCode, rateId } = req.body;
 
-        const adapter = await CarrierService.getAdapter(provider, userId);
-        const result = await adapter.schedulePickup(pickupRequest);
+        if (!carrierAccountId || !serviceCode) {
+            return res.status(400).json({ error: 'Missing carrierAccountId or serviceCode' });
+        }
 
-        const savedPickup = await prisma.pickupRequest.create({
-            data: {
-                carrier: provider,
-                confirmation: result.confirmationNumber,
-                scheduledDate: new Date(pickupRequest.date),
-                windowStart: pickupRequest.windowStart,
-                windowEnd: pickupRequest.windowEnd,
-                status: result.status
+        const gateway = await getCarrierGateway(carrierAccountId);
+
+        // 1. Book with Carrier
+        const bookingResult = await gateway.bookShipment({
+            shipmentId: id,
+            serviceCode,
+            rateId // unique ID from quote if available
+        });
+
+        // 2. Generate Label Document (if we got raw data or need to generate one)
+        // For Mock, we assume we generate a generic "Label" PDF using our doc engine or store what we got.
+        // If bookingResult.labelData is null (Mock), let's generate a placeholder directly here or call generator.
+
+        // A real implementation would save the buffer to disk/S3.
+        // Here, we'll create a dummy document record.
+        const labelFilename = `LABEL-${bookingResult.trackingNumber}.pdf`;
+
+        // Save metadata
+        const meta = await prisma.shipmentCarrierMeta.upsert({
+            where: { shipmentId: id },
+            update: {
+                carrierCode: 'MOCK', // simplified
+                serviceLevelCode: serviceCode,
+                trackingNumber: bookingResult.trackingNumber,
+                bookedAt: new Date(),
+                bookingResponseJson: JSON.stringify(bookingResult)
+            },
+            create: {
+                shipmentId: id,
+                carrierCode: 'MOCK',
+                serviceLevelCode: serviceCode,
+                trackingNumber: bookingResult.trackingNumber,
+                bookedAt: new Date(),
+                bookingResponseJson: JSON.stringify(bookingResult)
             }
         });
 
-        res.status(201).json(savedPickup);
+        // Update main shipment status
+        await prisma.shipment.update({
+            where: { id },
+            data: {
+                status: 'booked',
+                trackingNumber: bookingResult.trackingNumber,
+                carrierCode: 'MOCK',
+                serviceLevelCode: serviceCode
+            }
+        });
+
+        res.json({
+            success: true,
+            trackingNumber: bookingResult.trackingNumber,
+            labelUrl: null // TODO: return document URL once created
+        });
+
     } catch (error) {
-        console.error('Schedule pickup error:', error);
-        res.status(500).json({ error: error.message });
+        console.error('Booking error:', error);
+        res.status(500).json({ error: 'Failed to book shipment' });
     }
 });
 

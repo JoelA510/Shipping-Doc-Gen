@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Save, ArrowLeft, Edit2, AlertTriangle, X, Plus, Trash2, BookmarkPlus } from 'lucide-react';
+import { Save, ArrowLeft, Edit2, AlertTriangle, X, Plus, Trash2, BookmarkPlus, Download } from 'lucide-react';
 import { api, API_URL } from '../../services/api';
 import EditableField from '../common/EditableField';
 import PartySelector from '../common/PartySelector';
 import Comments from './Comments';
 import History from './History';
+import CarrierRatePanel from './CarrierRatePanel';
 
 export default function DocumentReview({ document, onBack, user, onGenerate }) {
     const [doc, setDoc] = useState(document);
@@ -64,11 +65,71 @@ export default function DocumentReview({ document, onBack, user, onGenerate }) {
         setDoc({ ...doc, references: updatedRefs });
     };
 
+    const handleDismiss = async (code) => {
+        if (!doc.isShipment) return;
+        try {
+            await api.dismissIssue(doc.id, [code]);
+            // Optimistically update UI
+            setDoc(prev => ({
+                ...prev,
+                meta: {
+                    ...prev.meta,
+                    validation: prev.meta.validation.filter(v => v.code !== code)
+                }
+            }));
+        } catch (err) {
+            console.error(err);
+            alert('Failed to dismiss issue');
+        }
+    };
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        setMessage(null);
+        try {
+            // If it's a shipment, we might need a different API, but usually updateDocument 
+            // maps effectively or we assume the API handles it.
+            // For now, using updateDocument as legacy.
+            await api.updateDocument(doc.id, doc);
+            setIsEditing(false);
+            setMessage({ type: 'success', text: 'Changes saved successfully' });
+        } catch (err) {
+            setMessage({ type: 'error', text: `Save failed: ${err.message}` });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleExport = async () => {
+        setIsExporting(true);
+        setMessage(null);
+        try {
+            let response;
+            if (doc.isShipment && typeof onGenerate === 'function') {
+                response = await onGenerate(selectedTemplate);
+            } else {
+                response = await api.triggerExport(doc.id, 'sli', selectedTemplate);
+            }
+
+            if (response && response.url) {
+                const fullUrl = `${API_URL}${response.url}`;
+                window.open(fullUrl, '_blank');
+                setMessage({ type: 'success', text: 'Export complete. Download should begin shortly.' });
+            } else {
+                throw new Error('No download URL returned');
+            }
+        } catch (err) {
+            setMessage({ type: 'error', text: `Export failed: ${err.message}` });
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    // Address Block Component
     const AddressBlock = ({ title, data, isEditing, onChange }) => {
         const [isSelectorOpen, setIsSelectorOpen] = useState(false);
 
         const handleSelectParty = (party) => {
-            // Map party fields to document header fields
             onChange('name', party.name);
             onChange('address', party.addressLine1);
             onChange('address2', party.addressLine2 || '');
@@ -76,12 +137,10 @@ export default function DocumentReview({ document, onBack, user, onGenerate }) {
             onChange('state', party.stateOrProvince || '');
             onChange('zip', party.postalCode);
             onChange('country', party.countryCode);
-            onChange('partyId', party.id); // Store the ID!
-
+            onChange('partyId', party.id);
             setIsSelectorOpen(false);
         };
 
-        // Fallback for legacy string data or null
         if (!data || typeof data !== 'object') {
             return (
                 <div className="relative">
@@ -125,7 +184,6 @@ export default function DocumentReview({ document, onBack, user, onGenerate }) {
                         </button>
                     )}
                 </div>
-
                 <div className="space-y-3">
                     <EditableField label="Name" value={data.name} isEditing={isEditing} onChange={(v) => onChange('name', v)} />
                     <EditableField label="Address" value={data.address} isEditing={isEditing} onChange={(v) => onChange('address', v)} />
@@ -138,498 +196,277 @@ export default function DocumentReview({ document, onBack, user, onGenerate }) {
                         <EditableField label="Zip" value={data.zip} isEditing={isEditing} onChange={(v) => onChange('zip', v)} />
                         <EditableField label="Country" value={data.country} isEditing={isEditing} onChange={(v) => onChange('country', v)} />
                     </div>
-                    {/* Hidden Party ID indicator */}
                 </div>
+                <PartySelector
+                    isOpen={isSelectorOpen}
+                    onClose={() => setIsSelectorOpen(false)}
+                    onSelect={handleSelectParty}
+                />
             </div>
         );
     };
 
-    const handleSaveAsTemplate = async () => {
-        const templateName = prompt('Enter template name:');
-        if (!templateName) return;
-
-        const templateDescription = prompt('Enter description (optional):');
-
-        try {
-            const token = localStorage.getItem('token');
-            const res = await fetch('/templates', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    name: templateName,
-                    description: templateDescription || '',
-                    header: doc.header
-                })
-            });
-
-            setIsSaving(true);
-            setMessage(null);
-            try {
-                await api.updateDocument(doc.id, doc);
-                setIsEditing(false);
-                setMessage({ type: 'success', text: 'Document saved successfully' });
-            } catch (err) {
-                setMessage({ type: 'error', text: `Save failed: ${err.message}` });
-            } finally {
-                setIsSaving(false);
-            }
-        };
-
-        const handleExport = async () => {
-            setIsExporting(true);
-            setMessage(null);
-            try {
-                let response;
-                if (doc.isShipment && typeof onGenerate === 'function') {
-                    // Use custom generation handler for Shipments
-                    // Pass the selected template directly as the type/template
-                    response = await onGenerate(selectedTemplate);
-                } else {
-                    // Default legacy behavior for Documents
-                    response = await api.triggerExport(doc.id, 'sli', selectedTemplate);
-                }
-
-                if (response && response.url) {
-                    // Open URL in new window/tab - browser will handle the download
-                    const fullUrl = `${API_URL}${response.url}`;
-                    window.open(fullUrl, '_blank');
-                    setMessage({ type: 'success', text: 'Export complete. Download should begin shortly.' });
-                } else {
-                </select >
-        <button
-            onClick={handleExport}
-            disabled={isExporting}
-            className="btn-primary flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-200"
-        >
-            {/* <Download className="w-4 h-4" /> */}
-            {isExporting ? 'Exporting...' : 'Generate PDF'}
-        </button>
-            </>
-        ) : (
-        <>
-            <button
-                onClick={() => { setIsEditing(false); setDoc(document); }}
-                className="btn-secondary flex items-center gap-2"
-            >
-                <X className="w-4 h-4" />
-                Cancel
-            </button>
-            <button
-                onClick={handleSave}
-                disabled={isSaving}
-                className="btn-primary flex items-center gap-2"
-            >
-                <Save className="w-4 h-4" />
-                {isSaving ? 'Saving...' : 'Save Changes'}
-            </button>
-        </>
-    )
-}
-                </div >
-            </div >
-
-    { message && (
-        <div
-            className={`p-4 rounded-lg border ${message.type === 'success'
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                : 'bg-red-50 border-red-200 text-red-800'
-                }`}
-        >
-            {message.text}
-        </div>
-    )
-}
-
-{
-    validationErrors.length > 0 && (
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-            <div className="flex items-center gap-2 mb-2 text-amber-800 font-semibold">
-                <AlertTriangle className="w-5 h-5" />
-                <h3>Validation Issues</h3>
-            </div>
-            <ul className="list-disc pl-5 space-y-2 text-sm text-amber-700">
-                {validationErrors.map((err, i) => (
-                    <li key={i} className="flex items-start justify-between gap-2">
-                        <span>
-                            {err.lineIndex !== undefined ? `Line ${err.lineIndex + 1}: ` : ''}
-                            {err.message}
-                            {err.field && ` (${err.field})`}
-                        </span>
-                        {err.code && (
-                            <button
-                                onClick={() => handleDismiss(err.code)}
-                                className="text-xs text-amber-600 hover:text-amber-800 underline shrink-0"
-                            >
-                                Dismiss
-                            </button>
-                        )}
-                    </li>
-                ))}
-            </ul>
-        </div>
-    )
-}
-
-<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    {/* Main Content */}
-    <div className="lg:col-span-2 space-y-6">
-        {/* Header Section */}
-        <section className="card">
-            <h3 className="text-lg font-semibold text-slate-900 mb-4 pb-2 border-b border-slate-100">
-                Shipment Details
-            </h3>
-            <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <AddressBlock
-                        title="Shipper"
-                        data={header.shipper}
-                        isEditing={isEditing}
-                        onChange={(field, val) => handleAddressChange('shipper', field, val)}
-                    />
-                    <AddressBlock
-                        title="Consignee"
-                        data={header.consignee}
-                        isEditing={isEditing}
-                        onChange={(field, val) => handleAddressChange('consignee', field, val)}
-                    />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <EditableField
-                        label="Incoterm"
-                        value={header.incoterm}
-                        isEditing={isEditing}
-                        onChange={(val) => handleHeaderChange('incoterm', val)}
-                    />
-                    <EditableField
-                        label="Currency"
-                        value={header.currency}
-                        isEditing={isEditing}
-                        onChange={(val) => handleHeaderChange('currency', val)}
-                    />
-                </div>
-            </div>
-        </section>
-
-        {/* References Section */}
-        <section className="card">
-            <h3 className="text-lg font-semibold text-slate-900 mb-4 pb-2 border-b border-slate-100">
-                References
-            </h3>
-
-            <div className="space-y-3 mb-4">
-                {(doc.references || []).map((ref, idx) => (
-                    <div key={idx} className="flex items-center gap-2 p-2 bg-slate-50 rounded border border-slate-100">
-                        <span className="font-medium text-slate-700 w-24">{ref.type}:</span>
-                        <span className="flex-1 text-slate-900">{ref.value}</span>
-                        {isEditing && (
-                            <button
-                                onClick={() => handleRemoveReference(idx)}
-                                className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded"
-                                title="Remove reference"
-                                aria-label={`Remove reference ${ref.type} ${ref.value}`}
-                            >
-                                <Trash2 size={16} />
-                            </button>
-                        )}
+    return (
+        <div className="min-h-screen bg-slate-50 pb-12">
+            {/* Toolbar */}
+            <div className="bg-white border-b border-slate-200 sticky top-0 z-10 px-4 py-3 flex items-center justify-between shadow-sm">
+                <div className="flex items-center gap-4">
+                    <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full text-slate-500">
+                        <ArrowLeft className="w-5 h-5" />
+                    </button>
+                    <div>
+                        <h1 className="text-xl font-bold text-slate-900">
+                            {doc.isShipment ? `Shipment ${doc.id.slice(0, 8)}` : doc.filename}
+                        </h1>
                     </div>
-                ))}
-                {(!doc.references || doc.references.length === 0) && (
-                    <div className="text-slate-400 italic text-sm">No references added</div>
-                )}
-            </div>
+                </div>
 
-            {/* Add Form */}
-            {isEditing && (doc.references || []).length < 5 && (
-                <div className="flex gap-3 items-end border-t border-slate-100 pt-4 mt-4">
-                    <div className="w-32">
-                        <label htmlFor="new-ref-type" className="block text-xs font-medium text-slate-500 mb-1">Type</label>
-                        <select
-                            id="new-ref-type"
-                            value={newRefType}
-                            onChange={(e) => setNewRefType(e.target.value)}
-                            className="input-field py-1.5 text-sm"
+                <div className="flex items-center gap-3">
+                    {isEditing ? (
+                        <>
+                            <select
+                                value={selectedTemplate}
+                                onChange={e => setSelectedTemplate(e.target.value)}
+                                className="input-field py-1.5 px-3 text-sm w-40"
+                            >
+                                <option value="commercial_invoice">Commercial Invoice</option>
+                                <option value="packing_list">Packing List</option>
+                                <option value="sli">SLI</option>
+                                <option value="certificate_of_origin">Certificate of Origin</option>
+                                <option value="dangerous_goods_declaration">DG Declaration</option>
+                            </select>
+                            <button
+                                onClick={handleExport}
+                                disabled={isExporting}
+                                className="btn-primary flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700"
+                            >
+                                <Download className="w-4 h-4" />
+                                {isExporting ? 'Generating...' : 'Generate PDF'}
+                            </button>
+                            <button
+                                onClick={() => setIsEditing(false)}
+                                className="btn-secondary flex items-center gap-2"
+                            >
+                                <X className="w-4 h-4" /> Stop Editing
+                            </button>
+                            <button
+                                onClick={handleSave}
+                                disabled={isSaving}
+                                className="btn-primary flex items-center gap-2"
+                            >
+                                <Save className="w-4 h-4" />
+                                {isSaving ? 'Saving...' : 'Save Changes'}
+                            </button>
+                        </>
+                    ) : (
+                        <button
+                            onClick={() => setIsEditing(true)}
+                            className="btn-secondary flex items-center gap-2"
                         >
-                            <option value="PO">PO</option>
-                            <option value="SO">SO</option>
-                            <option value="Invoice">Invoice</option>
-                            <option value="Shipment">Shipment</option>
-                            <option value="HAWB">HAWB</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-                    <div className="flex-1">
-                        <label htmlFor="new-ref-value" className="block text-xs font-medium text-slate-500 mb-1">Value</label>
-                        <input
-                            id="new-ref-value"
-                            type="text"
-                            value={newRefValue}
-                            onChange={(e) => setNewRefValue(e.target.value)}
-                            className="input-field py-1.5 text-sm"
-                            placeholder="Enter number"
-                        />
-                    </div>
-                                </td>
-                                <td className="p-4 text-right">
-                                    <EditableField value={line.quantity} isEditing={isEditing} type="number" onChange={(val) => handleLineChange(i, 'quantity', val)} />
-                                </td>
-                                <td className="p-4 text-right">
-                                    <EditableField value={line.netWeightKg} isEditing={isEditing} type="number" onChange={(val) => handleLineChange(i, 'netWeightKg', val)} />
-                                </td>
-                                <td className="p-4 text-right">
-                                    <EditableField value={line.valueUsd} isEditing={isEditing} type="number" onChange={(val) => handleLineChange(i, 'valueUsd', val)} />
-                                </td>
-                                <td className="p-4">
-                                    <EditableField value={line.htsCode} isEditing={isEditing} onChange={(val) => handleLineChange(i, 'htsCode', val)} />
-                                </td>
-                                <td className="p-4">
-                                    <EditableField value={line.countryOfOrigin} isEditing={isEditing} onChange={(val) => handleLineChange(i, 'countryOfOrigin', val)} />
-                                </td>
-                                <td className="p-4">
-                                    <div className="flex flex-col gap-1">
-                                        <EditableField
-                                            placeholder="UN#"
-                                            value={line.dgUnNumber}
-                                            isEditing={isEditing}
-                                            onChange={(val) => handleLineChange(i, 'dgUnNumber', val)}
-                                        />
-                                        <div className="flex gap-1">
-                                            <EditableField
-                                                placeholder="Class"
-                                                value={line.dgHazardClass}
-                                                isEditing={isEditing}
-                                                onChange={(val) => handleLineChange(i, 'dgHazardClass', val)}
-                                            />
-                                            <EditableField
-                                                placeholder="PG"
-                                                value={line.dgPackingGroup}
-                                                isEditing={isEditing}
-                                                onChange={(val) => handleLineChange(i, 'dgPackingGroup', val)}
-                                            />
-                                        </div>
-                                    </div>
-                                    <label className="flex items-center gap-2 mt-1">
-                                        <input
-                                            type="checkbox"
-                                            checked={line.isDangerousGoods || false}
-                                            onChange={(e) => handleLineChange(i, 'isDangerousGoods', e.target.checked)}
-                                            disabled={!isEditing}
-                                            className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-200"
-                                        />
-                                        <span className="text-xs text-slate-500">DG</span>
-                                    </label>
-        </>
-            )
-            }
-    </div >
-</div >
-
-{
-    message && (
-        <div
-            className={`p-4 rounded-lg border ${message.type === 'success'
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                : 'bg-red-50 border-red-200 text-red-800'
-                }`}
-        >
-            {message.text}
-        </div>
-    )
-}
-
-{
-    validationErrors.length > 0 && (
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-            <div className="flex items-center gap-2 mb-2 text-amber-800 font-semibold">
-                <AlertTriangle className="w-5 h-5" />
-                <h3>Validation Issues</h3>
-            </div>
-            <ul className="list-disc pl-5 space-y-2 text-sm text-amber-700">
-                {validationErrors.map((err, i) => (
-                    <li key={i} className="flex items-start justify-between gap-2">
-                        <span>
-                            {err.lineIndex !== undefined ? `Line ${err.lineIndex + 1}: ` : ''}
-                            {err.message}
-                            {err.field && ` (${err.field})`}
-                        </span>
-                        {err.code && (
-                            <button
-                                onClick={() => handleDismiss(err.code)}
-                                className="text-xs text-amber-600 hover:text-amber-800 underline shrink-0"
-                            >
-                                Dismiss
-                            </button>
-                        )}
-                    </li>
-                ))}
-            </ul>
-        </div>
-    )
-}
-
-<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    {/* Main Content */}
-    <div className="lg:col-span-2 space-y-6">
-        {/* Header Section */}
-        <section className="card">
-            <h3 className="text-lg font-semibold text-slate-900 mb-4 pb-2 border-b border-slate-100">
-                Shipment Details
-            </h3>
-            <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <AddressBlock
-                        title="Shipper"
-                        data={header.shipper}
-                        isEditing={isEditing}
-                        onChange={(field, val) => handleAddressChange('shipper', field, val)}
-                    />
-                    <AddressBlock
-                        title="Consignee"
-                        data={header.consignee}
-                        isEditing={isEditing}
-                        onChange={(field, val) => handleAddressChange('consignee', field, val)}
-                    />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <EditableField
-                        label="Incoterm"
-                        value={header.incoterm}
-                        isEditing={isEditing}
-                        onChange={(val) => handleHeaderChange('incoterm', val)}
-                    />
-                    <EditableField
-                        label="Currency"
-                        value={header.currency}
-                        isEditing={isEditing}
-                        onChange={(val) => handleHeaderChange('currency', val)}
-                    />
+                            <Edit2 className="w-4 h-4" /> Edit
+                        </button>
+                    )}
                 </div>
             </div>
-        </section>
 
-        {/* References Section */}
-        <section className="card">
-            <h3 className="text-lg font-semibold text-slate-900 mb-4 pb-2 border-b border-slate-100">
-                References
-            </h3>
-
-            <div className="space-y-3 mb-4">
-                {(doc.references || []).map((ref, idx) => (
-                    <div key={idx} className="flex items-center gap-2 p-2 bg-slate-50 rounded border border-slate-100">
-                        <span className="font-medium text-slate-700 w-24">{ref.type}:</span>
-                        <span className="flex-1 text-slate-900">{ref.value}</span>
-                        {isEditing && (
-                            <button
-                                onClick={() => handleRemoveReference(idx)}
-                                className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded"
-                                title="Remove reference"
-                                aria-label={`Remove reference ${ref.type} ${ref.value}`}
-                            >
-                                <Trash2 size={16} />
-                            </button>
-                        )}
+            <div className="max-w-7xl mx-auto px-4 py-8">
+                {message && (
+                    <div className={`p-4 rounded-lg border mb-6 ${message.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+                        {message.text}
                     </div>
-                ))}
-                {(!doc.references || doc.references.length === 0) && (
-                    <div className="text-slate-400 italic text-sm">No references added</div>
                 )}
-            </div>
 
-            {/* Add Form */}
-            {isEditing && (doc.references || []).length < 5 && (
-                <div className="flex gap-3 items-end border-t border-slate-100 pt-4 mt-4">
-                    <div className="w-32">
-                        <label htmlFor="new-ref-type" className="block text-xs font-medium text-slate-500 mb-1">Type</label>
-                        <select
-                            id="new-ref-type"
-                            value={newRefType}
-                            onChange={(e) => setNewRefType(e.target.value)}
-                            className="input-field py-1.5 text-sm"
-                        >
-                            <option value="PO">PO</option>
-                            <option value="SO">SO</option>
-                            <option value="Invoice">Invoice</option>
-                            <option value="Shipment">Shipment</option>
-                            <option value="HAWB">HAWB</option>
-                            <option value="Other">Other</option>
-                        </select>
+                {validationErrors.length > 0 && (
+                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg mb-6">
+                        <div className="flex items-center gap-2 mb-2 text-amber-800 font-semibold">
+                            <AlertTriangle className="w-5 h-5" />
+                            <h3>Validation Issues</h3>
+                        </div>
+                        <ul className="list-disc pl-5 space-y-2 text-sm text-amber-700">
+                            {validationErrors.map((err, i) => (
+                                <li key={i} className="flex items-start justify-between gap-2">
+                                    <span>
+                                        {err.lineIndex !== undefined ? `Line ${err.lineIndex + 1}: ` : ''}
+                                        {err.message}
+                                        {err.field && ` (${err.field})`}
+                                    </span>
+                                    {err.code && (
+                                        <button onClick={() => handleDismiss(err.code)} className="text-xs underline hover:text-amber-900">
+                                            Dismiss
+                                        </button>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
                     </div>
-                    <div className="flex-1">
-                        <label htmlFor="new-ref-value" className="block text-xs font-medium text-slate-500 mb-1">Value</label>
-                        <input
-                            id="new-ref-value"
-                            type="text"
-                            value={newRefValue}
-                            onChange={(e) => setNewRefValue(e.target.value)}
-                            className="input-field py-1.5 text-sm"
-                            placeholder="Enter number"
-                        />
-                    </div>
-                                </td>
-                                <td className="p-4 text-right">
-                                    <EditableField value={line.quantity} isEditing={isEditing} type="number" onChange={(val) => handleLineChange(i, 'quantity', val)} />
-                                </td>
-                                <td className="p-4 text-right">
-                                    <EditableField value={line.netWeightKg} isEditing={isEditing} type="number" onChange={(val) => handleLineChange(i, 'netWeightKg', val)} />
-                                </td>
-                                <td className="p-4 text-right">
-                                    <EditableField value={line.valueUsd} isEditing={isEditing} type="number" onChange={(val) => handleLineChange(i, 'valueUsd', val)} />
-                                </td>
-                                <td className="p-4">
-                                    <EditableField value={line.htsCode} isEditing={isEditing} onChange={(val) => handleLineChange(i, 'htsCode', val)} />
-                                </td>
-                                <td className="p-4">
-                                    <EditableField value={line.countryOfOrigin} isEditing={isEditing} onChange={(val) => handleLineChange(i, 'countryOfOrigin', val)} />
-                                </td>
-                                <td className="p-4">
-                                    <div className="flex flex-col gap-1">
-                                        <EditableField
-                                            placeholder="UN#"
-                                            value={line.dgUnNumber}
-                                            isEditing={isEditing}
-                                            onChange={(val) => handleLineChange(i, 'dgUnNumber', val)}
-                                        />
-                                        <div className="flex gap-1">
-                                            <EditableField
-                                                placeholder="Class"
-                                                value={line.dgHazardClass}
-                                                isEditing={isEditing}
-                                                onChange={(val) => handleLineChange(i, 'dgHazardClass', val)}
-                                            />
-                                            <EditableField
-                                                placeholder="PG"
-                                                value={line.dgPackingGroup}
-                                                isEditing={isEditing}
-                                                onChange={(val) => handleLineChange(i, 'dgPackingGroup', val)}
-                                            />
-                                        </div>
+                )}
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-2 space-y-6">
+                        {/* Header Details */}
+                        <section className="card p-6 bg-white rounded-lg shadow-sm border border-slate-200">
+                            <h3 className="text-lg font-semibold text-slate-900 mb-4 pb-2 border-b border-slate-100">Shipment Details</h3>
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <AddressBlock
+                                        title="Shipper"
+                                        data={header.shipper}
+                                        isEditing={isEditing}
+                                        onChange={(field, val) => handleAddressChange('shipper', field, val)}
+                                    />
+                                    <AddressBlock
+                                        title="Consignee"
+                                        data={header.consignee}
+                                        isEditing={isEditing}
+                                        onChange={(field, val) => handleAddressChange('consignee', field, val)}
+                                    />
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <EditableField label="Incoterm" value={header.incoterm} isEditing={isEditing} onChange={(val) => handleHeaderChange('incoterm', val)} />
+                                    <EditableField label="Currency" value={header.currency} isEditing={isEditing} onChange={(val) => handleHeaderChange('currency', val)} />
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* References */}
+                        <section className="card p-6 bg-white rounded-lg shadow-sm border border-slate-200">
+                            <h3 className="text-lg font-semibold text-slate-900 mb-4 pb-2 border-b border-slate-100">References</h3>
+                            <div className="space-y-3 mb-4">
+                                {(doc.references || []).map((ref, idx) => (
+                                    <div key={idx} className="flex items-center gap-2 p-2 bg-slate-50 rounded border border-slate-100">
+                                        <span className="font-medium text-slate-700 w-24">{ref.type}:</span>
+                                        <span className="flex-1 text-slate-900">{ref.value}</span>
+                                        {isEditing && (
+                                            <button onClick={() => handleRemoveReference(idx)} className="text-red-500 hover:text-red-700 p-1">
+                                                <Trash2 size={16} />
+                                            </button>
+                                        )}
                                     </div>
-                                    <label className="flex items-center gap-2 mt-1">
+                                ))}
+                                {(!doc.references || doc.references.length === 0) && (
+                                    <div className="text-slate-400 italic text-sm">No references added</div>
+                                )}
+                            </div>
+                            {isEditing && (doc.references || []).length < 5 && (
+                                <div className="flex gap-3 items-end border-t border-slate-100 pt-4 mt-4">
+                                    <div className="w-32">
+                                        <label className="block text-xs font-medium text-slate-500 mb-1">Type</label>
+                                        <select
+                                            value={newRefType}
+                                            onChange={(e) => setNewRefType(e.target.value)}
+                                            className="input-field py-1.5 text-sm"
+                                        >
+                                            <option value="PO">PO</option>
+                                            <option value="SO">SO</option>
+                                            <option value="Invoice">Invoice</option>
+                                            <option value="Shipment">Shipment</option>
+                                            <option value="HAWB">HAWB</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
+                                    <div className="flex-1">
+                                        <label className="block text-xs font-medium text-slate-500 mb-1">Value</label>
                                         <input
-                                            type="checkbox"
-                                            checked={line.isDangerousGoods || false}
-                                            onChange={(e) => handleLineChange(i, 'isDangerousGoods', e.target.checked)}
-                                            disabled={!isEditing}
-                                            className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-200"
+                                            type="text"
+                                            value={newRefValue}
+                                            onChange={(e) => setNewRefValue(e.target.value)}
+                                            className="input-field py-1.5 text-sm"
+                                            placeholder="Enter number"
                                         />
-                                        <span className="text-xs text-slate-500">DG</span>
-                                    </label>
-                                </td>
-                            </tr>
-                        ))}
-    </tbody>
-</table>
-            </div >
-        </section >
-    </div >
+                                    </div>
+                                    <button onClick={handleAddReference} className="btn-secondary py-1.5">
+                                        <Plus className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            )}
+                        </section>
 
-    {/* Sidebar */ }
-    < div className = "space-y-6" >
-        <Comments documentId={doc.id} user={user} />
-        <History documentId={!doc.isShipment ? doc.id : undefined} shipmentId={doc.isShipment ? doc.id : undefined} />
-    </div >
-</div >
+                        {/* Line Items */}
+                        <section className="card p-6 bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+                            <h3 className="text-lg font-semibold text-slate-900 mb-4 pb-2 border-b border-slate-100">Line Items</h3>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="text-xs text-slate-500 uppercase bg-slate-50">
+                                        <tr>
+                                            <th className="px-4 py-3">Description</th>
+                                            <th className="px-4 py-3 text-right">Qty</th>
+                                            <th className="px-4 py-3 text-right">Weight (kg)</th>
+                                            <th className="px-4 py-3 text-right">Value</th>
+                                            <th className="px-4 py-3">HTS Code</th>
+                                            <th className="px-4 py-3">Origin</th>
+                                            <th className="px-4 py-3">DG Info</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {lines.map((line, i) => (
+                                            <tr key={i} className="hover:bg-slate-50">
+                                                <td className="p-4">
+                                                    <EditableField value={line.description} isEditing={isEditing} onChange={(val) => handleLineChange(i, 'description', val)} />
+                                                </td>
+                                                <td className="p-4 text-right">
+                                                    <EditableField value={line.quantity} isEditing={isEditing} type="number" onChange={(val) => handleLineChange(i, 'quantity', val)} />
+                                                </td>
+                                                <td className="p-4 text-right">
+                                                    <EditableField value={line.netWeightKg} isEditing={isEditing} type="number" onChange={(val) => handleLineChange(i, 'netWeightKg', val)} />
+                                                </td>
+                                                <td className="p-4 text-right">
+                                                    <EditableField value={line.valueUsd} isEditing={isEditing} type="number" onChange={(val) => handleLineChange(i, 'valueUsd', val)} />
+                                                </td>
+                                                <td className="p-4">
+                                                    <EditableField value={line.htsCode} isEditing={isEditing} onChange={(val) => handleLineChange(i, 'htsCode', val)} />
+                                                </td>
+                                                <td className="p-4">
+                                                    <EditableField value={line.countryOfOrigin} isEditing={isEditing} onChange={(val) => handleLineChange(i, 'countryOfOrigin', val)} />
+                                                </td>
+                                                <td className="p-4 w-48">
+                                                    <div className="flex flex-col gap-2">
+                                                        <label className="flex items-center gap-2">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={line.isDangerousGoods || false}
+                                                                onChange={(e) => handleLineChange(i, 'isDangerousGoods', e.target.checked)}
+                                                                disabled={!isEditing}
+                                                                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-200"
+                                                            />
+                                                            <span className="text-xs font-semibold text-slate-600">DG?</span>
+                                                        </label>
+                                                        {(line.isDangerousGoods) && (
+                                                            <div className="grid grid-cols-2 gap-1">
+                                                                <EditableField placeholder="UN#" value={line.dgUnNumber} isEditing={isEditing} onChange={(val) => handleLineChange(i, 'dgUnNumber', val)} />
+                                                                <EditableField placeholder="Class" value={line.dgHazardClass} isEditing={isEditing} onChange={(val) => handleLineChange(i, 'dgHazardClass', val)} />
+                                                                <EditableField placeholder="PG" value={line.dgPackingGroup} isEditing={isEditing} onChange={(val) => handleLineChange(i, 'dgPackingGroup', val)} />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    </div>
+
+                    <div className="space-y-6">
+                        {doc.isShipment && (
+                            <CarrierRatePanel
+                                shipmentId={doc.id}
+                                shipmentStatus={doc.status}
+                                onBook={(result) => {
+                                    setDoc(prev => ({
+                                        ...prev,
+                                        status: 'booked',
+                                        carrierCode: 'MOCK',
+                                        trackingNumber: result.trackingNumber
+                                    }));
+                                }}
+                            />
+                        )}
+                        <Comments documentId={doc.id} user={user} />
+                        <History documentId={!doc.isShipment ? doc.id : undefined} shipmentId={doc.isShipment ? doc.id : undefined} />
+                    </div>
+                </div>
+            </div>
+        </div>
     );
 }

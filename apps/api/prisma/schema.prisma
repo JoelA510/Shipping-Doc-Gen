@@ -117,7 +117,7 @@ model Notification {
 model CarrierAccount {
   id            String   @id @default(uuid())
   userId        String
-  provider      String   // "fedex", "ups"
+  provider      String   // "mock", "fedex", "ups"
   accountNumber String   // Encrypted
   credentials   String   // JSON (Encrypted API Keys/Secrets)
   isActive      Boolean  @default(true)
@@ -127,6 +127,26 @@ model CarrierAccount {
   user User @relation(fields: [userId], references: [id])
 
   @@index([userId])
+}
+
+model ShipmentCarrierMeta {
+  id                String   @id @default(uuid())
+  shipmentId        String   @unique
+  
+  carrierCode       String?
+  serviceLevelCode  String?
+  
+  rateQuoteJson     String? // JSON
+  bookingResponseJson String? // JSON
+  
+  labelDocumentId   String?
+  trackingNumber    String?
+  bookedAt          DateTime?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  shipment          Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
 }
 
 // --- Canonical Schema V1 ---
@@ -197,6 +217,8 @@ model Shipment {
   // documentId is likely the "source reference" document
   sourceDocumentId  String?
   sourceDocument    Document? @relation(fields: [sourceDocumentId], references: [id])
+  
+  carrierMeta       ShipmentCarrierMeta?
 
   @@index([sourceDocumentId])
 }

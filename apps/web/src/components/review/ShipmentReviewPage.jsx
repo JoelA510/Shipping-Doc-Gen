@@ -44,6 +44,9 @@ export default function ShipmentReviewPage({ user, onBack }) {
 
                 return {
                     id: s.id,
+                    status: s.status,
+                    carrierCode: s.carrierCode,
+                    trackingNumber: s.trackingNumber,
                     header: head,
                     lines: lines,
                     meta: {

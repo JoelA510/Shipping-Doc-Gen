@@ -15,6 +15,7 @@ const carriersRouter = require('./routes/carriers');
 const partiesRouter = require('./routes/parties');
 const shipmentsRouter = require('./routes/shipments');
 const importRouter = require('./routes/import');
+const filesRouter = require('./routes/files');
 
 const port = process.env.PORT || 3001;
 const app = express();
