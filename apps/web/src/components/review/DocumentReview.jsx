@@ -6,8 +6,11 @@ import PartySelector from '../common/PartySelector';
 import Comments from './Comments';
 import History from './History';
 import History from './History';
+import History from './History';
 import CarrierRatePanel from './CarrierRatePanel';
 import ForwarderBookingPanel from './ForwarderBookingPanel';
+import AesPanel from './AesPanel';
+import SanctionsPanel from './SanctionsPanel';
 
 export default function DocumentReview({ document, onBack, user, onGenerate }) {
     const [doc, setDoc] = useState(document);
@@ -434,7 +437,23 @@ export default function DocumentReview({ document, onBack, user, onGenerate }) {
                                                         </label>
                                                         {(line.isDangerousGoods) && (
                                                             <div className="grid grid-cols-2 gap-1">
-                                                                <EditableField placeholder="UN#" value={line.dgUnNumber} isEditing={isEditing} onChange={(val) => handleLineChange(i, 'dgUnNumber', val)} />
+                                                                <EditableField
+                                                                    placeholder="UN#"
+                                                                    value={line.dgUnNumber}
+                                                                    isEditing={isEditing}
+                                                                    onChange={async (val) => {
+                                                                        handleLineChange(i, 'dgUnNumber', val);
+                                                                        if (val && val.length >= 4) {
+                                                                            try {
+                                                                                const dg = await api.lookupUnNumber(val);
+                                                                                if (dg) {
+                                                                                    handleLineChange(i, 'dgHazardClass', dg.hazardClass);
+                                                                                    handleLineChange(i, 'dgPackingGroup', dg.packingGroup || '');
+                                                                                }
+                                                                            } catch (e) { console.log('DG Lookup failed', e); }
+                                                                        }
+                                                                    }}
+                                                                />
                                                                 <EditableField placeholder="Class" value={line.dgHazardClass} isEditing={isEditing} onChange={(val) => handleLineChange(i, 'dgHazardClass', val)} />
                                                                 <EditableField placeholder="PG" value={line.dgPackingGroup} isEditing={isEditing} onChange={(val) => handleLineChange(i, 'dgPackingGroup', val)} />
                                                             </div>
@@ -471,6 +490,11 @@ export default function DocumentReview({ document, onBack, user, onGenerate }) {
                                         setDoc(prev => ({ ...prev, status: 'booked' }));
                                     }}
                                 />
+                                <AesPanel
+                                    shipment={doc}
+                                    onUpdate={(field, val) => handleHeaderChange(field, val)} // AES fields are on header/root
+                                />
+                                <SanctionsPanel shipmentId={doc.id} />
                             </>
                         )}
                         <Comments documentId={doc.id} user={user} />

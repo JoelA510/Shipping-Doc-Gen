@@ -208,6 +208,32 @@ model ErpExportJob {
   @@index([configId])
 }
 
+// Epic 17: Advanced Compliance
+model DgUnReference {
+  id                 String   @id @default(uuid())
+  unNumber           String   // e.g. "UN3481"
+  properShippingName String
+  hazardClass        String
+  packingGroup       String?
+  
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  
+  @@index([unNumber])
+}
+
+model SanctionsCheckResult {
+  id           String   @id @default(uuid())
+  shipmentId   String
+  status       String   // "CLEAR", "MATCH", "ERROR"
+  responseJson String?  // JSON details
+  
+  createdAt    DateTime @default(now())
+  
+  shipment Shipment @relation(fields: [shipmentId], references: [id])
+  @@index([shipmentId])
+}
+
 // --- Canonical Schema V1 ---
 
 model Shipment {
@@ -245,11 +271,12 @@ model Shipment {
   serviceLevelCode  String?
   trackingNumber    String?
 
-  // Compliance Flags
-  aesRequired       Boolean?
-  aesItn            String?
-  eeiExemptionCode  String?
-  hasDangerousGoods Boolean?
+  // Compliance (Epic 17)
+  aesRequired      Boolean   @default(false)
+  aesItn           String?   // Internal Transaction Number
+  aesExemptionCode String?
+  sanctionsChecks  SanctionsCheckResult[]
+
 
   // Metadata
   status            String   @default("draft") // draft, imported, validated, booked, completed

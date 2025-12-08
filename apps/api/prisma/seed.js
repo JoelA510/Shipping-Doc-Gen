@@ -163,6 +163,17 @@ Shipping Team`,
     });
     console.log('Seeded ERP Export Configs');
 
+    // 6. Seed DG References (Epic 17)
+    await prisma.dgUnReference.createMany({
+        data: [
+            { unNumber: 'UN3481', properShippingName: 'Lithium ion batteries contained in equipment', hazardClass: '9', packingGroup: 'II' },
+            { unNumber: 'UN1263', properShippingName: 'Paint related material', hazardClass: '3', packingGroup: 'II' },
+            { unNumber: 'UN1950', properShippingName: 'Aerosols', hazardClass: '2.1', packingGroup: '' },
+            { unNumber: 'UN1866', properShippingName: 'Resin solution', hazardClass: '3', packingGroup: 'III' }
+        ]
+    });
+    console.log('Seeded DG References');
+
     console.log('Seeding finished.');
 }
 
