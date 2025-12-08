@@ -12,6 +12,7 @@ import TemplateLibraryPage from './components/templates/TemplateLibraryPage';
 import ErpExportDashboard from './components/erp/ErpExportDashboard';
 
 import ImportPage from './components/import/ImportPage';
+import Dashboard from './components/dashboard/Dashboard';
 import NotificationBell from './components/common/NotificationBell';
 import Login from './components/auth/Login';
 import { api } from './services/api';
@@ -156,21 +157,7 @@ function AppContent() {
                 <Route path="/" element={
                     <ProtectedRoute user={user} loading={loading}>
                         <Layout user={user} onLogout={handleLogout}>
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -20 }}
-                                transition={{ duration: 0.3 }}
-                                className="h-full flex flex-col"
-                            >
-                                <div className="mb-8 text-center">
-                                    <h2 className="text-3xl font-bold text-slate-900 mb-2">Upload Shipping Documents</h2>
-                                    <p className="text-slate-500 text-lg">Drag and drop your files to automatically extract and format data.</p>
-                                </div>
-                                <UploadZone onDocumentUploaded={(doc) => {
-                                    navigate(`/documents/${doc.id}`);
-                                }} />
-                            </motion.div>
+                            <Dashboard />
                         </Layout>
                     </ProtectedRoute>
                 } />
@@ -305,8 +292,8 @@ function AppContent() {
                         </Layout>
                     </ProtectedRoute>
                 } />
-            </Routes>
-        </AnimatePresence>
+            </Routes >
+        </AnimatePresence >
     );
 }
 

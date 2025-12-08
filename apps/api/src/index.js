@@ -83,18 +83,12 @@ app.use((req, res) => {
     res.status(404).json({ error: 'Route not found' });
 });
 
-//Centralized error handler
-app.use((err, req, res, next) => {
-    console.error('Error:', err);
+const errorHandler = require('./middleware/errorHandler');
 
-    // Don't leak error details in production
-    const isDev = process.env.NODE_ENV !== 'production';
+// ...
 
-    res.status(err.status || 500).json({
-        error: err.message || 'Internal server error',
-        ...(isDev && { stack: err.stack })
-    });
-});
+// Centralized error handler
+app.use(errorHandler);
 
 if (require.main === module) {
     app.listen(port, () => {

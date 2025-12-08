@@ -172,6 +172,11 @@ export const api = {
     },
 
     // Shipments
+    getShipments: async (params = {}) => {
+        const query = new URLSearchParams(params).toString();
+        return request(`/shipments?${query}`);
+    },
+
     getShipment: async (id) => {
         return request(`/shipments/${id}`);
     },
@@ -263,6 +268,27 @@ export const api = {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ shipmentId })
+        });
+    },
+
+    // Import/Export (Epic 19)
+    exportShipment: async (shipmentId) => {
+        // We do a fetch directly here to handle the blob response
+        const token = localStorage.getItem('token') || authToken;
+        const response = await fetch(`${API_URL}/shipments/${shipmentId}/export`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        if (!response.ok) throw new Error('Export failed');
+        return response.blob();
+    },
+
+    importShipment: async (importData) => {
+        return request('/shipments/import', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(importData)
         });
     }
 };

@@ -331,4 +331,43 @@ router.get('/:id/history', async (req, res) => {
     }
 });
 
+// ... History handler ...
+
+const importExportService = require('../services/portability/importExportService');
+
+// GET /shipments/:id/export
+router.get('/:id/export', async (req, res) => {
+    try {
+        const data = await importExportService.exportShipment(req.params.id);
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', `attachment; filename=shipment-${req.params.id}-export.json`);
+        res.json(data);
+    } catch (error) {
+        console.error('Export error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// POST /shipments/import (Note: Not under /:id)
+router.post('/import', async (req, res) => {
+    try {
+        const userId = req.user?.id || 'unknown';
+        const payload = req.body;
+
+        if (!payload || typeof payload !== 'object') {
+            return res.status(400).json({ error: 'Invalid payload' });
+        }
+
+        const newShipment = await importExportService.importShipment(payload, userId);
+
+        // Audit
+        await historian.logShipmentEvent(newShipment.id, 'imported', userId, { originalId: payload.data?.id });
+
+        res.status(201).json(newShipment);
+    } catch (error) {
+        console.error('Import error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;
