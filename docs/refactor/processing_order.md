@@ -4,7 +4,7 @@ This document lists the recommended order for processing the refactoring tickets
 
 1.  **SEC-001** – **Secure File Uploads & ZIP Handling** (`docs/refactor/SEC-001_secure_uploads.md`) [COMPLETED]
     *   *Rationale:* Critical security vulnerability (Zip Slip/DoS) in a public-facing endpoint.
-2.  **SEC-002** – **Secure Static File Serving** (`docs/refactor/SEC-002_secure_static_files.md`)
+2.  **SEC-002** – **Secure Static File Serving** (`docs/refactor/SEC-002_secure_static_files.md`) [COMPLETED]
     *   *Rationale:* Exposure of sensitive user documents.
 3.  **SEC-003** – **Enforce Real Authentication** (`docs/refactor/SEC-003_enforce_auth.md`)
     *   *Rationale:* Foundational security layer; needed before reliable RBAC or audit logging can be trusted.
