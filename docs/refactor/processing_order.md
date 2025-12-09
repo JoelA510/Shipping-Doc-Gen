@@ -10,7 +10,7 @@ This document lists the recommended order for processing the refactoring tickets
     *   *Rationale:* Foundational security layer; needed before reliable RBAC or audit logging can be trusted.
 4.  **PERF-001** – **Database Indexing** (`docs/refactor/PERF-001_db_indexing.md`) [COMPLETED]
     *   *Rationale:* High impact, low effort. Prevents technical debt accumulation as data grows.
-5.  **ARCH-001** – **Async Job Queue** (`docs/refactor/ARCH-001_async_jobs.md`)
+5.  **ARCH-001** – **Async Job Queue** (`docs/refactor/ARCH-001_async_jobs.md`) [COMPLETED]
     *   *Rationale:* Structural change that improves stability for heavy loads (uploads/PDFs). Prerequisite for scaling PDF generation.
 6.  **COST-001** – **PDF Generator Optimization** (`docs/refactor/COST-001_pdf_optimization.md`)
     *   *Rationale:* Significant resource reduction (RAM/CPU). Best done after or in conjunction with the job queue work.

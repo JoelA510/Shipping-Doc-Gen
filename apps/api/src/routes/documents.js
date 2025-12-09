@@ -137,20 +137,20 @@ router.post('/:id/export', async (req, res) => {
         }
 
         const { TEMPLATE_MAP } = require('../config/templates');
-
         const templateName = TEMPLATE_MAP[template] || 'sli'; // Default to SLI
-        console.log(`Generating PDF for document ${req.params.id} as ${type} using template ${templateName}`);
 
-        const pdfBuffer = await generatePDF(doc, templateName);
+        const { addJob } = require('../queue'); // Lazy load or move to top
+        const job = await addJob('GENERATE_PDF', {
+            data: doc, // Passing full doc data
+            templateName,
+            documentId: req.params.id,
+            type
+        });
 
-        const filename = `${req.params.id}-${type}-${Date.now()}.pdf`;
-        const savedFile = await saveFile(pdfBuffer, filename);
-
-        res.status(200).json({
-            message: 'Export complete',
-            url: savedFile.url,
-            path: savedFile.path,
-            template: templateName
+        res.status(202).json({
+            message: 'Export started',
+            jobId: job.id,
+            statusUrl: `/jobs/${job.id}`
         });
     } catch (error) {
         console.error('Export error:', error);

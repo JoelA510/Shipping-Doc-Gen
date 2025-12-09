@@ -16,7 +16,7 @@
         "@prisma/client": "^6.19.0",
         "adm-zip": "^0.5.16",
         "bcryptjs": "^3.0.3",
-        "bullmq": "^5.63.2",
+        "bullmq": "^5.65.1",
         "cors": "^2.8.5",
         "csv-parse": "^6.1.0",
         "dotenv": "^16.3.1",
