@@ -1,4 +1,4 @@
-const puppeteer = require('puppeteer');
+const { getBrowser } = require('./browser'); // Updated import
 const handlebars = require('handlebars');
 const fs = require('fs');
 const path = require('path');
@@ -12,6 +12,7 @@ const { TEMPLATE_DEFAULTS } = require('../config/templates');
  * @returns {Promise<Buffer>} PDF buffer
  */
 async function generatePDF(data, templateName = 'sli') {
+    let page = null;
     try {
         const templatePath = path.join(__dirname, `../templates/${templateName}.hbs`);
         console.log('[Generator] Loading template:', templatePath);
@@ -30,43 +31,41 @@ async function generatePDF(data, templateName = 'sli') {
             ...data
         };
 
-        console.log('[Generator] Rendering template with context');
+        // console.log('[Generator] Rendering template with context'); // Reduce noise
         const html = template(context);
-        console.log('[Generator] Template rendered successfully, launching browser');
 
-        const browser = await puppeteer.launch({
-            headless: 'new',
-            args: ['--no-sandbox', '--disable-setuid-sandbox'] // Required for Docker/CI environments
-        });
+        // Get singleton browser
+        const browser = await getBrowser();
 
-        try {
-            const page = await browser.newPage();
-            console.log('[Generator] Setting page content');
-            await page.setContent(html, { waitUntil: 'networkidle0' });
-            console.log('[Generator] Generating PDF');
+        page = await browser.newPage();
+        // console.log('[Generator] Setting page content'); // Reduce noise
+        await page.setContent(html, { waitUntil: 'networkidle0' });
+        // console.log('[Generator] Generating PDF'); // Reduce noise
 
-            const defaults = TEMPLATE_DEFAULTS[templateName] || { format: 'A4' };
-            const pdfOptions = {
-                printBackground: true,
-                margin: {
-                    top: '20px',
-                    right: '20px',
-                    bottom: '20px',
-                    left: '20px'
-                },
-                ...defaults
-            };
+        const defaults = TEMPLATE_DEFAULTS[templateName] || { format: 'A4' };
+        const pdfOptions = {
+            printBackground: true,
+            margin: {
+                top: '20px',
+                right: '20px',
+                bottom: '20px',
+                left: '20px'
+            },
+            ...defaults
+        };
 
-            const pdfBuffer = await page.pdf(pdfOptions);
-            console.log('[Generator] PDF generated successfully');
-            return pdfBuffer;
-        } finally {
-            await browser.close();
-        }
+        const pdfBuffer = await page.pdf(pdfOptions);
+        console.log(`[Generator] PDF generated successfully for template: ${templateName}`);
+        return pdfBuffer;
+
     } catch (error) {
         console.error('[Generator] Error generating PDF:', error);
         console.error('[Generator] Error stack:', error.stack);
         throw error;
+    } finally {
+        if (page) {
+            await page.close();
+        }
     }
 }
 
