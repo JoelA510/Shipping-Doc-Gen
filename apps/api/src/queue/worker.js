@@ -1,5 +1,6 @@
 const { Worker } = require('bullmq');
 const { connection } = require('./index');
+const logger = require('../utils/logger');
 const { generatePDF } = require('../services/generator');
 const { saveFile } = require('../services/storage'); // You might need to adjust this depending on how upload logic is moved
 // Note: secure zip uploading logic is currently inside the route. 
@@ -53,14 +54,14 @@ const worker = new Worker('shipping-doc-gen-queue', processor, {
 });
 
 worker.on('completed', (job, returnvalue) => {
-    console.log(`[Worker] Job ${job.id} completed! Result:`, returnvalue);
+    logger.info('Job completed', { jobId: job.id, result: returnvalue });
 });
 
 worker.on('failed', (job, error) => {
-    console.error(`[Worker] Job ${job.id} failed:`, error);
+    logger.error('Job failed', { jobId: job.id, error: error.message, stack: error.stack });
 });
 
-console.log('[Worker] Queue worker started');
+logger.info('Queue worker started');
 
 module.exports = {
     worker

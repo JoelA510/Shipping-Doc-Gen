@@ -16,7 +16,7 @@ This document lists the recommended order for processing the refactoring tickets
     * *Rationale:* Significant resource reduction (RAM/CPU). Best done after or in conjunction with the job queue work.
 7. **COST-002** – **Carrier Rate Caching** (`docs/refactor/COST-002_rate_caching.md`) [COMPLETED]
     * *Rationale:* Reduces latency and external API usage/costs.
-8. **ARCH-002** – **Structured Logging & Error Handling** (`docs/refactor/ARCH-002_structured_logging.md`)
+8. **ARCH-002** – **Structured Logging & Error Handling** (`docs/refactor/ARCH-002_structured_logging.md`) [COMPLETED]
     * *Rationale:* Improves observability and debugging.
 9. **CODE-001** – **Refactor OCR Mapper & Shared Schemas** (`docs/refactor/CODE-001_ocr_refactor.md`)
     * *Rationale:* Code cleanup and maintainability. Lower risk/impact than the above.

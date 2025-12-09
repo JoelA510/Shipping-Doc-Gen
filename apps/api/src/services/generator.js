@@ -1,7 +1,8 @@
-const { getBrowser } = require('./browser'); // Updated import
+const { getBrowser } = require('./browser');
 const handlebars = require('handlebars');
 const fs = require('fs');
 const path = require('path');
+const logger = require('../utils/logger');
 
 const { TEMPLATE_DEFAULTS } = require('../config/templates');
 
@@ -15,7 +16,7 @@ async function generatePDF(data, templateName = 'sli') {
     let page = null;
     try {
         const templatePath = path.join(__dirname, `../templates/${templateName}.hbs`);
-        console.log('[Generator] Loading template:', templatePath);
+        logger.info('Loading template', { templateName, templatePath });
         const templateHtml = fs.readFileSync(templatePath, 'utf8');
 
         // Register Handlebars helpers
@@ -59,8 +60,7 @@ async function generatePDF(data, templateName = 'sli') {
         return pdfBuffer;
 
     } catch (error) {
-        console.error('[Generator] Error generating PDF:', error);
-        console.error('[Generator] Error stack:', error.stack);
+        logger.error('Error generating PDF', { error: error.message, stack: error.stack, templateName });
         throw error;
     } finally {
         if (page) {

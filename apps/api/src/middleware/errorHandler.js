@@ -1,10 +1,18 @@
-const { Prisma } = require('@prisma/client');
+const logger = require('../utils/logger');
 
 /**
  * Standardized Error Handling Middleware
  */
 const errorHandler = (err, req, res, next) => {
-    console.error(`[Error] ${req.method} ${req.path}:`, err);
+    // Structured logging
+    logger.error(err.message, {
+        code: err.code || 'INTERNAL_ERROR',
+        stack: err.stack,
+        method: req.method,
+        path: req.path,
+        requestId: req.id, // request-id middleware if present
+        details: err.details
+    });
 
     // Default status and message
     let status = err.status || 500;

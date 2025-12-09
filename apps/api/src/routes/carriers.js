@@ -11,6 +11,7 @@ const { generateDocument } = require('../services/documents/generator');
  */
 const crypto = require('crypto');
 const { connection: redis } = require('../services/redis');
+const logger = require('../utils/logger');
 
 // ...
 
@@ -49,11 +50,11 @@ router.post('/:id/rates', async (req, res) => {
         // 1. Check Cache
         const cachedRates = await redis.get(cacheKey);
         if (cachedRates) {
-            console.log(`[Rates] Cache HIT for ${cacheKey}`);
+            logger.info('Cache HIT for rates', { cacheKey });
             return res.json(JSON.parse(cachedRates));
         }
 
-        console.log(`[Rates] Cache MISS for ${cacheKey}. Fetching from gateways...`);
+        logger.info('Cache MISS for rates', { cacheKey });
 
         const ratesPromises = carrierAccounts.map(async (account) => {
             try {
@@ -62,7 +63,7 @@ router.post('/:id/rates', async (req, res) => {
                 // Tag rates with the account ID so we know which one to book with
                 return rates.map(r => ({ ...r, carrierAccountId: account.id }));
             } catch (err) {
-                console.error(`Failed to get rates from account ${account.id}:`, err);
+                logger.error('Failed to get rates from account', { accountId: account.id, error: err.message });
                 return [];
             }
         });
@@ -84,7 +85,7 @@ router.post('/:id/rates', async (req, res) => {
 
         res.json(allRates);
     } catch (error) {
-        console.error('Rate shop error:', error);
+        logger.error('Rate shop error', { error: error.message, stack: error.stack, shipmentId: req.params.id });
         res.status(500).json({ error: 'Failed to retrieve rates' });
     }
 });
@@ -157,7 +158,7 @@ router.post('/:id/book', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Booking error:', error);
+        logger.error('Booking error', { error: error.message, stack: error.stack, shipmentId: req.params.id });
         res.status(500).json({ error: 'Failed to book shipment' });
     }
 });
