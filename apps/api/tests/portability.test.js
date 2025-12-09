@@ -1,26 +1,26 @@
 const request = require('supertest');
 const { shipments } = require('./fixtures/shipments');
 
-// Mock Prisma - defined inline to avoid hoisting issues
-jest.mock('../src/lib/prisma', () => {
-    const mockClient = {
-        shipment: {
-            findUnique: jest.fn(),
-            create: jest.fn()
-        },
-        shipmentCarrierMeta: {
-            findMany: jest.fn()
-        },
-        $transaction: jest.fn((cb) => cb(mockClient)),
-        $connect: jest.fn(),
-        $disconnect: jest.fn()
-    };
-    // return the mock client directly or a factory that returns it?
-    // prisma module usually exports the client instance.
-    return mockClient;
-});
+// Mock Prisma Client
+const mockPrisma = {
+    shipment: {
+        findUnique: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn()
+    },
+    shipmentCarrierMeta: {
+        findMany: jest.fn()
+    },
+    $transaction: jest.fn((cb) => cb(mockPrisma)),
+    $connect: jest.fn(),
+    $disconnect: jest.fn()
+};
 
-const mockPrisma = require('../src/lib/prisma');
+jest.mock('@prisma/client', () => {
+    return {
+        PrismaClient: jest.fn().mockImplementation(() => mockPrisma)
+    };
+});
 
 // Mock Services/Libs
 jest.mock('bullmq', () => ({

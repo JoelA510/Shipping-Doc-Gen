@@ -3,6 +3,9 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import UploadZone from '../upload/UploadZone';
 import ShipmentList from './ShipmentList';
+import FeatureGuard from '../common/FeatureGuard';
+// Note: We might need to export keys from context or a constants file. 
+// For now using string literals or importing from context if available.
 
 export default function Dashboard() {
     const navigate = useNavigate();
@@ -32,6 +35,22 @@ export default function Dashboard() {
                 transition={{ duration: 0.5, delay: 0.2 }}
             >
                 <ShipmentList />
+            </motion.div>
+
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+                className="flex justify-end"
+            >
+                <FeatureGuard featureKey="ERP_EXPORT">
+                    <button
+                        onClick={() => navigate('/erp')}
+                        className="text-slate-500 hover:text-slate-700 underline text-sm"
+                    >
+                        Go to ERP Dashboard
+                    </button>
+                </FeatureGuard>
             </motion.div>
         </div>
     );

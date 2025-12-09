@@ -18,6 +18,7 @@ const importRouter = require('./routes/import');
 const filesRouter = require('./routes/files');
 const forwardersRouter = require('./routes/forwarders');
 const erpRouter = require('./routes/erp');
+const configRouter = require('./routes/config');
 
 
 const port = process.env.PORT || 3001;
@@ -57,6 +58,7 @@ app.get('/health', (req, res) => {
 
 // Public routes
 app.use('/auth', authRouter);
+app.use('/config', configRouter);
 app.use('/metrics', metricsRouter);
 
 // Protected routes

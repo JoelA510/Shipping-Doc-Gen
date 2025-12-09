@@ -9,6 +9,7 @@ import CarrierRatePanel from './CarrierRatePanel';
 import ForwarderBookingPanel from './ForwarderBookingPanel';
 import AesPanel from './AesPanel';
 import SanctionsPanel from './SanctionsPanel';
+import FeatureGuard from '../common/FeatureGuard';
 
 export default function DocumentReview({ document, onBack, user, onGenerate }) {
     const [doc, setDoc] = useState(document);
@@ -469,30 +470,36 @@ export default function DocumentReview({ document, onBack, user, onGenerate }) {
                     <div className="space-y-6">
                         {doc.isShipment && (
                             <>
-                                <CarrierRatePanel
-                                    shipmentId={doc.id}
-                                    shipmentStatus={doc.status}
-                                    onBook={(result) => {
-                                        setDoc(prev => ({
-                                            ...prev,
-                                            status: 'booked',
-                                            carrierCode: 'MOCK',
-                                            trackingNumber: result.trackingNumber
-                                        }));
-                                    }}
-                                />
-                                <ForwarderBookingPanel
-                                    shipmentId={doc.id}
-                                    shipmentStatus={doc.status}
-                                    onBook={() => {
-                                        setDoc(prev => ({ ...prev, status: 'booked' }));
-                                    }}
-                                />
-                                <AesPanel
-                                    shipment={doc}
-                                    onUpdate={(field, val) => handleHeaderChange(field, val)} // AES fields are on header/root
-                                />
-                                <SanctionsPanel shipmentId={doc.id} />
+                                <FeatureGuard featureKey="CARRIER_INTEGRATION">
+                                    <CarrierRatePanel
+                                        shipmentId={doc.id}
+                                        shipmentStatus={doc.status}
+                                        onBook={(result) => {
+                                            setDoc(prev => ({
+                                                ...prev,
+                                                status: 'booked',
+                                                carrierCode: 'MOCK',
+                                                trackingNumber: result.trackingNumber
+                                            }));
+                                        }}
+                                    />
+                                </FeatureGuard>
+                                <FeatureGuard featureKey="CARRIER_INTEGRATION">
+                                    <ForwarderBookingPanel
+                                        shipmentId={doc.id}
+                                        shipmentStatus={doc.status}
+                                        onBook={() => {
+                                            setDoc(prev => ({ ...prev, status: 'booked' }));
+                                        }}
+                                    />
+                                </FeatureGuard>
+                                <FeatureGuard featureKey="COMPLIANCE_ENHANCED">
+                                    <AesPanel
+                                        shipment={doc}
+                                        onUpdate={(field, val) => handleHeaderChange(field, val)} // AES fields are on header/root
+                                    />
+                                    <SanctionsPanel shipmentId={doc.id} />
+                                </FeatureGuard>
                             </>
                         )}
                         <Comments documentId={doc.id} user={user} />

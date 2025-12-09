@@ -16,6 +16,8 @@ import Dashboard from './components/dashboard/Dashboard';
 import NotificationBell from './components/common/NotificationBell';
 import Login from './components/auth/Login';
 import { api } from './services/api';
+import { FeatureFlagProvider } from './context/FeatureFlagContext';
+import SettingsPage from './components/settings/SettingsPage';
 
 const ProtectedRoute = ({ children, user, loading }) => {
     const location = useLocation();
@@ -66,6 +68,10 @@ const Layout = ({ user, onLogout, children }) => {
                             <Link to="/reports" className="text-slate-600 hover:text-primary-600 font-medium px-3 py-2 rounded-md hover:bg-slate-50 flex items-center gap-2">
                                 <BarChart3 className="w-4 h-4" />
                                 Reports
+                            </Link>
+                            <Link to="/settings" className="text-slate-600 hover:text-primary-600 font-medium px-3 py-2 rounded-md hover:bg-slate-50 flex items-center gap-2">
+                                {/* Settings Icon placeholder or reuse generic */}
+                                Settings
                             </Link>
                         </nav>
                     </div>
@@ -278,6 +284,11 @@ function AppContent() {
                         </Layout>
                     </ProtectedRoute>
                 } />
+                <Route path="/settings" element={
+                    <ProtectedRoute user={user} loading={loading}>
+                        <SettingsPage />
+                    </ProtectedRoute>
+                } />
                 <Route path="/erp" element={
                     <ProtectedRoute user={user} loading={loading}>
                         <Layout user={user} onLogout={handleLogout}>
@@ -300,7 +311,9 @@ function AppContent() {
 function App() {
     return (
         <BrowserRouter>
-            <AppContent />
+            <FeatureFlagProvider>
+                <AppContent />
+            </FeatureFlagProvider>
         </BrowserRouter>
     );
 }

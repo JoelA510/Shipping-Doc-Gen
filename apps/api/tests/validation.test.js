@@ -1,3 +1,12 @@
+// Mock Prisma for HTS validation
+const mockPrisma = {
+    item: { findFirst: jest.fn() },
+    htsCode: { findUnique: jest.fn().mockResolvedValue({ id: 'hts1', code: '1234.56', description: 'Test' }) },
+};
+jest.mock('@prisma/client', () => ({
+    PrismaClient: jest.fn().mockImplementation(() => mockPrisma)
+}));
+
 const { validateShipment } = require('../src/services/validation/engine');
 
 describe('Validation Engine', () => {
@@ -7,7 +16,8 @@ describe('Validation Engine', () => {
         shipperName: 'Acme',
         consigneeName: 'Globex',
         totalCustomsValue: 100,
-        totalWeightKg: 10
+        totalWeightKg: 10,
+        incoterm: 'EXW' // Added required field
     };
 
     const validLines = [
