@@ -1,9 +1,7 @@
 const { Queue } = require('bullmq');
-const Redis = require('ioredis');
+const { connection } = require('../services/redis');
 
-const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
-    maxRetriesPerRequest: null
-});
+// Removed local Redis instantiation logic
 
 const myQueue = new Queue('shipping-doc-gen-queue', { connection });
 

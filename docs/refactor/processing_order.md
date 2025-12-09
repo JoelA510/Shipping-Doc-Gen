@@ -14,7 +14,7 @@ This document lists the recommended order for processing the refactoring tickets
     * *Rationale:* Structural change that improves stability for heavy loads (uploads/PDFs). Prerequisite for scaling PDF generation.
 6. **COST-001** – **PDF Generator Optimization** (`docs/refactor/COST-001_pdf_optimization.md`) [COMPLETED]
     * *Rationale:* Significant resource reduction (RAM/CPU). Best done after or in conjunction with the job queue work.
-7. **COST-002** – **Carrier Rate Caching** (`docs/refactor/COST-002_rate_caching.md`)
+7. **COST-002** – **Carrier Rate Caching** (`docs/refactor/COST-002_rate_caching.md`) [COMPLETED]
     * *Rationale:* Reduces latency and external API usage/costs.
 8. **ARCH-002** – **Structured Logging & Error Handling** (`docs/refactor/ARCH-002_structured_logging.md`)
     * *Rationale:* Improves observability and debugging.

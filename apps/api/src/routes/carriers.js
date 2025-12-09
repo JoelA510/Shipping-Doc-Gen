@@ -9,6 +9,11 @@ const { generateDocument } = require('../services/documents/generator');
  * GET /api/shipments/:id/rates
  * Trigger a rate shop for a shipment.
  */
+const crypto = require('crypto');
+const { connection: redis } = require('../services/redis');
+
+// ...
+
 router.post('/:id/rates', async (req, res) => {
     try {
         const { id } = req.params;
@@ -21,8 +26,6 @@ router.post('/:id/rates', async (req, res) => {
             return res.status(404).json({ error: 'Shipment not found' });
         }
 
-        // In a real app, we'd find all active carrier accounts for this user/org
-        // For pilot, we find the first active "mock" provider or any active one
         const carrierAccounts = await prisma.carrierAccount.findMany({
             where: { isActive: true }
         });
@@ -30,6 +33,27 @@ router.post('/:id/rates', async (req, res) => {
         if (carrierAccounts.length === 0) {
             return res.status(400).json({ error: 'No active carrier accounts found. Please contact admin.' });
         }
+
+        // Cache Key Generation
+        // We hash critical rate-affecting fields to ensure uniqueness
+        const dataToHash = JSON.stringify({
+            origin: shipment.originCountry,
+            dest: shipment.destinationCountry,
+            weight: shipment.totalWeightKg,
+            items: shipment.lineItems.map(i => i.id).sort(), // Simplified item dependency
+            carriers: carrierAccounts.map(c => c.id).sort()
+        });
+        const hash = crypto.createHash('md5').update(dataToHash).digest('hex');
+        const cacheKey = `rates:${id}:${hash}`;
+
+        // 1. Check Cache
+        const cachedRates = await redis.get(cacheKey);
+        if (cachedRates) {
+            console.log(`[Rates] Cache HIT for ${cacheKey}`);
+            return res.json(JSON.parse(cachedRates));
+        }
+
+        console.log(`[Rates] Cache MISS for ${cacheKey}. Fetching from gateways...`);
 
         const ratesPromises = carrierAccounts.map(async (account) => {
             try {
@@ -46,8 +70,12 @@ router.post('/:id/rates', async (req, res) => {
         const nestedRates = await Promise.all(ratesPromises);
         const allRates = nestedRates.flat();
 
-        // Update meta with the latest quote for audit (optional, or just return them)
-        // We'll upsert the meta record
+        // 2. Store in Cache (TTL: 10 minutes)
+        if (allRates.length > 0) {
+            await redis.setex(cacheKey, 600, JSON.stringify(allRates));
+        }
+
+        // Update meta
         await prisma.shipmentCarrierMeta.upsert({
             where: { shipmentId: id },
             update: { rateQuoteJson: JSON.stringify(allRates) },
