@@ -27,17 +27,27 @@ jest.mock('../src/config/env', () => ({
 }));
 
 // Mock fs
+// Mock fs
 jest.mock('fs', () => ({
     existsSync: jest.fn(),
-    createReadStream: jest.fn()
+    createReadStream: jest.fn(),
+    stat: jest.fn().mockImplementation((path, cb) => cb(null, {
+        isFile: () => true,
+        isDirectory: () => false,
+        size: 1024,
+        mtime: new Date()
+    }))
 }));
 
 // Create minimal app
 const app = express();
 app.use(express.json());
 
-// Mock Auth Middleware behavior
+// Mock Auth Middleware behavior & Monkeypatch sendFile
 app.use((req, res, next) => {
+    // Mock sendFile to avoid real fs dependency issues
+    res.sendFile = jest.fn((path) => res.status(200).send('File Content'));
+
     if (req.headers['x-mock-user-id']) {
         req.user = {
             id: req.headers['x-mock-user-id'],

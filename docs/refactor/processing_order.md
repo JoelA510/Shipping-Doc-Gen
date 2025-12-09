@@ -6,7 +6,7 @@ This document lists the recommended order for processing the refactoring tickets
     *   *Rationale:* Critical security vulnerability (Zip Slip/DoS) in a public-facing endpoint.
 2.  **SEC-002** – **Secure Static File Serving** (`docs/refactor/SEC-002_secure_static_files.md`) [COMPLETED]
     *   *Rationale:* Exposure of sensitive user documents.
-3.  **SEC-003** – **Enforce Real Authentication** (`docs/refactor/SEC-003_enforce_auth.md`)
+3.  **SEC-003** – **Enforce Real Authentication** (`docs/refactor/SEC-003_enforce_auth.md`) [COMPLETED]
     *   *Rationale:* Foundational security layer; needed before reliable RBAC or audit logging can be trusted.
 4.  **PERF-001** – **Database Indexing** (`docs/refactor/PERF-001_db_indexing.md`)
     *   *Rationale:* High impact, low effort. Prevents technical debt accumulation as data grows.
