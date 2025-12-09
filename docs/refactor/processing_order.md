@@ -8,7 +8,7 @@ This document lists the recommended order for processing the refactoring tickets
     *   *Rationale:* Exposure of sensitive user documents.
 3.  **SEC-003** – **Enforce Real Authentication** (`docs/refactor/SEC-003_enforce_auth.md`) [COMPLETED]
     *   *Rationale:* Foundational security layer; needed before reliable RBAC or audit logging can be trusted.
-4.  **PERF-001** – **Database Indexing** (`docs/refactor/PERF-001_db_indexing.md`)
+4.  **PERF-001** – **Database Indexing** (`docs/refactor/PERF-001_db_indexing.md`) [COMPLETED]
     *   *Rationale:* High impact, low effort. Prevents technical debt accumulation as data grows.
 5.  **ARCH-001** – **Async Job Queue** (`docs/refactor/ARCH-001_async_jobs.md`)
     *   *Rationale:* Structural change that improves stability for heavy loads (uploads/PDFs). Prerequisite for scaling PDF generation.

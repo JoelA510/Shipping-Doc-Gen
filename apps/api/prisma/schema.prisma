@@ -61,6 +61,9 @@ model Comment {
 
   user     User     @relation(fields: [userId], references: [id])
   document Document @relation(fields: [documentId], references: [id])
+
+  @@index([userId])
+  @@index([documentId])
 }
 
 model AuditLog {
@@ -75,6 +78,10 @@ model AuditLog {
   user     User?     @relation(fields: [userId], references: [id])
   document Document? @relation(fields: [documentId], references: [id])
   shipment Shipment? @relation(fields: [shipmentId], references: [id])
+
+  @@index([userId])
+  @@index([shipmentId])
+  @@index([documentId])
 }
 
 model HtsCode {
@@ -307,6 +314,10 @@ model Shipment {
   carrierMeta       ShipmentCarrierMeta?
 
   @@index([sourceDocumentId])
+  @@index([createdByUserId])
+  @@index([status])
+  @@index([shipperId])
+  @@index([consigneeId])
 }
 
 model ShipmentLineItem {
@@ -371,6 +382,8 @@ model Party {
   shipmentsAsConsignee  Shipment[] @relation("ShipmentConsignee")
   shipmentsAsForwarder  Shipment[] @relation("ShipmentForwarder")
   shipmentsAsBroker     Shipment[] @relation("ShipmentBroker")
+
+  @@index([createdByUserId])
 }
 
 model ShipmentDocument {
@@ -423,6 +436,8 @@ model Item {
   createdByUserId String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  @@index([createdByUserId])
 }
 
 model ShipmentTemplate {
@@ -446,4 +461,6 @@ model ShipmentTemplate {
   createdByUserId String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  @@index([createdByUserId])
 }
