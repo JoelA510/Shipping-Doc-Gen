@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { Plus, Search, Edit2, Trash2, MapPin, Phone, Mail } from 'lucide-react';
 import PartyModal from './PartyModal'; // We'll create this next
@@ -12,6 +12,7 @@ export default function AddressBookPage() {
 
     useEffect(() => {
         loadParties();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchTerm]);
 
     const loadParties = async () => {
@@ -148,6 +149,7 @@ export default function AddressBookPage() {
 
             {isModalOpen && (
                 <PartyModal
+                    key={selectedParty?.id || 'new'}
                     party={selectedParty}
                     isOpen={isModalOpen}
                     onClose={() => setIsModalOpen(false)}

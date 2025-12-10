@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Package, Search, ArrowRight, Loader } from 'lucide-react';
 import RateShopper from './RateShopper';
 

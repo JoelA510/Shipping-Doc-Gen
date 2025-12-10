@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { BarChart3, FileText, AlertTriangle, ShieldCheck, Download, Calendar } from 'lucide-react';
 
@@ -41,6 +41,7 @@ export default function ReportsPage() {
 
     useEffect(() => {
         loadData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [dateRange]);
 
     const handleDownload = () => {

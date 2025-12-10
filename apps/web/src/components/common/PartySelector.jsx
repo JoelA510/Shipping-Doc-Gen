@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, MapPin, X } from 'lucide-react';
 import { api } from '../../services/api';
 
@@ -11,6 +11,7 @@ export default function PartySelector({ isOpen, onClose, onSelect }) {
         if (isOpen) {
             loadParties();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen, searchTerm]);
 
     const loadParties = async () => {

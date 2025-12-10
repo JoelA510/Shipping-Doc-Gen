@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMasterLibrary } from '../../hooks/useMasterLibrary';
 
 export default function TemplateDetailsPanel({ task }) {

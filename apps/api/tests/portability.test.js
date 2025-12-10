@@ -35,8 +35,19 @@ jest.mock('../src/services/auth', () => ({
 }));
 
 // Mock Historian
-jest.mock('../src/services/historian', () => ({
+jest.mock('../src/services/history/historian', () => ({
     logShipmentEvent: jest.fn()
+}));
+
+jest.mock('../src/services/redis', () => ({
+    connection: {
+        on: jest.fn(),
+        quit: jest.fn(),
+        duplicate: jest.fn(() => ({
+            on: jest.fn(),
+            quit: jest.fn()
+        }))
+    }
 }));
 
 const app = require('../src/index');

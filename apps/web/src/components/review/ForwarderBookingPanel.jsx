@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { Loader2, Copy, Check, FileText, Download } from 'lucide-react';
 
-export default function ForwarderBookingPanel({ shipmentId, shipmentStatus, onBook }) {
+export default function ForwarderBookingPanel({ shipmentId, shipmentStatus }) {
     const [profiles, setProfiles] = useState([]);
     const [selectedProfileId, setSelectedProfileId] = useState('');
     const [loading, setLoading] = useState(false);

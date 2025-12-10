@@ -1,4 +1,4 @@
-import React from 'react';
+
 
 export default function EditableField({ label, value, isEditing, onChange, type = 'text', className = '' }) {
     if (!isEditing) {

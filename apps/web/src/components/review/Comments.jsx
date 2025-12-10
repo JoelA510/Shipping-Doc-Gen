@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { MessageSquare, Send } from 'lucide-react';
 import { api } from '../../services/api';
 
@@ -10,6 +10,7 @@ export default function Comments({ documentId, user }) {
 
     useEffect(() => {
         loadComments();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [documentId]);
 
     const loadComments = async () => {
@@ -35,7 +36,7 @@ export default function Comments({ documentId, user }) {
 
             // Create notification for document owner (simplified - in production would notify specific users)
             try {
-                const token = localStorage.getItem('token');
+                // const token = localStorage.getItem('token');
                 // This would ideally be called server-side when comment is created
                 // For now, we're demonstrating the integration
                 console.log('Comment added, notification system ready for server-side integration');

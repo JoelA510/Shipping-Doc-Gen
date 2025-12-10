@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchFilteredTasks } from '../../services/taskService';
 import { clearFilters, loadFilters, saveFilters } from '../../utils/persistence';
 
@@ -17,6 +17,7 @@ const createDefaultFilters = () => ({
   sortBy: 'updated_desc'
 });
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const SearchContext = createContext(null);
 
 export function SearchProvider({ children, userId = null }) {

@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import DocumentReview from './DocumentReview';
 import { api } from '../../services/api';
 
-export default function ShipmentReviewPage({ user, onBack }) {
+export default function ShipmentReviewPage({ user }) {
     const { id } = useParams();
     const navigate = useNavigate();
     const [document, setDocument] = useState(null);
@@ -50,7 +50,7 @@ export default function ShipmentReviewPage({ user, onBack }) {
                     header: head,
                     lines: lines,
                     meta: {
-                        validation: validation.issues?.map((issue, idx) => ({
+                        validation: validation.issues?.map((issue) => ({
                             lineIndex: -1, // TODO: Parse path to get line index if possible
                             message: issue.message,
                             field: issue.path || issue.code,

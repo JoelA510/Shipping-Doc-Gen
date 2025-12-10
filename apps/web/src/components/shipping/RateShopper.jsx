@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { Check } from 'lucide-react';
 
 export default function RateShopper({ rates, onSelectRate, selectedRate }) {
@@ -42,8 +42,8 @@ export default function RateShopper({ rates, onSelectRate, selectedRate }) {
                                         <button
                                             onClick={() => onSelectRate(rate)}
                                             className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors ${isSelected
-                                                    ? 'bg-purple-600 text-white'
-                                                    : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
+                                                ? 'bg-purple-600 text-white'
+                                                : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
                                                 }`}
                                         >
                                             {isSelected && <Check className="w-3 h-3 mr-1" />}

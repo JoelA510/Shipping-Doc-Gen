@@ -1,41 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, X, MapPin, Phone, Mail, Building } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Search, Edit2, Trash2, X, Phone, Mail, Building } from 'lucide-react';
 import { api } from '../../services/api';
 
 const PartyModal = ({ party, isOpen, onClose, onSave }) => {
     const [formData, setFormData] = useState({
-        name: '',
-        addressLine1: '',
-        addressLine2: '',
-        city: '',
-        stateOrProvince: '',
-        postalCode: '',
-        countryCode: '',
-        contactName: '',
-        phone: '',
-        email: '',
-        taxIdOrEori: ''
+        name: party?.name || '',
+        addressLine1: party?.addressLine1 || '',
+        addressLine2: party?.addressLine2 || '',
+        city: party?.city || '',
+        stateOrProvince: party?.stateOrProvince || '',
+        postalCode: party?.postalCode || '',
+        countryCode: party?.countryCode || '',
+        contactName: party?.contactName || '',
+        phone: party?.phone || '',
+        email: party?.email || '',
+        taxIdOrEori: party?.taxIdOrEori || ''
     });
-
-    useEffect(() => {
-        if (party) {
-            setFormData(party);
-        } else {
-            setFormData({
-                name: '',
-                addressLine1: '',
-                addressLine2: '',
-                city: '',
-                stateOrProvince: '',
-                postalCode: '',
-                countryCode: '',
-                contactName: '',
-                phone: '',
-                email: '',
-                taxIdOrEori: ''
-            });
-        }
-    }, [party, isOpen]);
 
     if (!isOpen) return null;
 
@@ -250,6 +230,7 @@ const PartiesPage = () => {
 
     useEffect(() => {
         fetchParties();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [search]); // Re-fetch on search change
 
     const handleDelete = async (id) => {
@@ -368,6 +349,7 @@ const PartiesPage = () => {
             )}
 
             <PartyModal
+                key={editingParty?.id || 'new'}
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 onSave={handleSave}

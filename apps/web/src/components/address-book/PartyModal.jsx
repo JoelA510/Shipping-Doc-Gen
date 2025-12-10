@@ -1,47 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { X } from 'lucide-react';
 
 export default function PartyModal({ party, isOpen, onClose, onSave }) {
     const [formData, setFormData] = useState({
-        name: '',
-        addressLine1: '',
-        addressLine2: '',
-        city: '',
-        stateOrProvince: '',
-        postalCode: '',
-        countryCode: '',
-        contactName: '',
-        email: '',
-        phone: '',
-        taxIdOrEori: ''
+        name: party?.name || '',
+        addressLine1: party?.addressLine1 || '',
+        addressLine2: party?.addressLine2 || '',
+        city: party?.city || '',
+        stateOrProvince: party?.stateOrProvince || '',
+        postalCode: party?.postalCode || '',
+        countryCode: party?.countryCode || '',
+        contactName: party?.contactName || '',
+        email: party?.email || '',
+        phone: party?.phone || '',
+        taxIdOrEori: party?.taxIdOrEori || ''
     });
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState(null);
-
-    useEffect(() => {
-        if (party) {
-            setFormData({
-                name: party.name || '',
-                addressLine1: party.addressLine1 || '',
-                addressLine2: party.addressLine2 || '',
-                city: party.city || '',
-                stateOrProvince: party.stateOrProvince || '',
-                postalCode: party.postalCode || '',
-                countryCode: party.countryCode || '',
-                contactName: party.contactName || '',
-                email: party.email || '',
-                phone: party.phone || '',
-                taxIdOrEori: party.taxIdOrEori || ''
-            });
-        } else {
-            setFormData({
-                name: '', addressLine1: '', addressLine2: '', city: '',
-                stateOrProvince: '', postalCode: '', countryCode: '',
-                contactName: '', email: '', phone: '', taxIdOrEori: ''
-            });
-        }
-        setError(null);
-    }, [party, isOpen]);
 
     if (!isOpen) return null;
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Shield, AlertTriangle, CheckCircle, HelpCircle } from 'lucide-react';
+import { Shield, AlertTriangle, CheckCircle } from 'lucide-react';
 import { api } from '../../services/api';
 
 export default function AesPanel({ shipment, onUpdate }) {
@@ -10,6 +10,7 @@ export default function AesPanel({ shipment, onUpdate }) {
     useEffect(() => {
         if (!shipment) return;
         checkRequirement();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [shipment.id, shipment.destinationCountry]);
 
     const checkRequirement = async () => {

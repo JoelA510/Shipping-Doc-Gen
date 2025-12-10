@@ -1,16 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../../services/api';
-import { Plus, Search, Layers, Edit2, Trash2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Plus, Search, Layers, Trash2 } from 'lucide-react';
+
 
 export default function TemplateLibraryPage() {
     const [templates, setTemplates] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const navigate = useNavigate();
+
 
     useEffect(() => {
         loadTemplates();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchTerm]);
 
     const loadTemplates = async () => {
@@ -33,7 +34,7 @@ export default function TemplateLibraryPage() {
         alert("To create a template, please go to an existing Shipment and click 'Save as Template'.");
     };
 
-    const handleDelete = async (id) => {
+    const handleDelete = async () => {
         if (!window.confirm('Delete this template?')) return;
         try {
             // Need API method for deleting shipment template

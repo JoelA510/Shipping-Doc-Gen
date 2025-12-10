@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import { useContext } from 'react';
 import { MasterLibraryContext } from '../contexts/MasterLibraryContext';
 
 export default function MasterLibraryToolbar() {

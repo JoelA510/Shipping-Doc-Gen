@@ -23,7 +23,16 @@ jest.mock('bullmq', () => {
     };
 });
 
-jest.mock('ioredis', () => jest.fn());
+jest.mock('../src/services/redis', () => ({
+    connection: {
+        on: jest.fn(),
+        quit: jest.fn(),
+        duplicate: jest.fn(() => ({
+            on: jest.fn(),
+            quit: jest.fn()
+        }))
+    }
+}));
 
 // Mock services to avoid real IO
 jest.mock('../src/services/storage', () => ({

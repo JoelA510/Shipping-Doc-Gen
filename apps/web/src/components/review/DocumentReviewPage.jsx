@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import DocumentReview from './DocumentReview';
-import { api } from '../../services/api';
+
 
 export default function DocumentReviewPage({ user, onBack }) {
     const { id } = useParams();
-    const navigate = useNavigate();
+
     const [document, setDocument] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);

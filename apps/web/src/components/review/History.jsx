@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { History as HistoryIcon, Clock } from 'lucide-react';
 import { api } from '../../services/api';
 
@@ -10,6 +10,7 @@ export default function History({ documentId, shipmentId }) {
         if (documentId || shipmentId) {
             loadHistory();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [documentId, shipmentId]);
 
     const loadHistory = async () => {

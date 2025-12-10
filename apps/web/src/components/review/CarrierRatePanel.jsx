@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Truck, Package, Clock, DollarSign, CheckCircle, AlertTriangle } from 'lucide-react';
+import { useState } from 'react';
+import { Truck, Clock, CheckCircle, AlertTriangle } from 'lucide-react';
 import { api } from '../../services/api';
 
 export default function CarrierRatePanel({ shipmentId, shipmentStatus, onBook }) {

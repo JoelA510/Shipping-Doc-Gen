@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, CheckCircle, AlertCircle, Truck } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, CheckCircle, Truck } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function AccountManager() {

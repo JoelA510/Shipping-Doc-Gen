@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, Link 
 import { AnimatePresence, motion } from 'framer-motion';
 import { LogOut, Ship, Users, FileSpreadsheet, Package, BarChart3 } from 'lucide-react';
 import ReportsPage from './components/reports/ReportsPage';
-import UploadZone from './components/upload/UploadZone';
+
 import DocumentReviewPage from './components/review/DocumentReviewPage';
 import ShipmentReviewPage from './components/review/ShipmentReviewPage';
 import AddressBookPage from './components/address-book/AddressBookPage';
@@ -111,6 +111,7 @@ function AppContent() {
 
     useEffect(() => {
         checkAuth();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const checkAuth = async () => {

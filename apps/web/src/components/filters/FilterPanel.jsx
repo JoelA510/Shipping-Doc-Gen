@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Calendar, DollarSign, Filter, X } from 'lucide-react';
 
@@ -59,8 +59,8 @@ export default function FilterPanel({ onFilterChange, activeFilters = {} }) {
                 <button
                     onClick={() => setIsOpen(!isOpen)}
                     className={`px-6 py-3 rounded-xl border transition flex items-center gap-2 ${isOpen || activeFilterCount > 0
-                            ? 'bg-purple-600 text-white border-purple-600'
-                            : 'bg-white text-gray-700 border-gray-200 hover:border-purple-500'
+                        ? 'bg-purple-600 text-white border-purple-600'
+                        : 'bg-white text-gray-700 border-gray-200 hover:border-purple-500'
                         }`}
                 >
                     <Filter className="w-5 h-5" />

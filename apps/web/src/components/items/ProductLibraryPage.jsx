@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { Plus, Search, Package, Edit2, Trash2 } from 'lucide-react';
 import ProductModal from './ProductModal';
@@ -12,6 +12,7 @@ export default function ProductLibraryPage() {
 
     useEffect(() => {
         loadItems();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchTerm]);
 
     const loadItems = async () => {
@@ -138,6 +139,7 @@ export default function ProductLibraryPage() {
 
             {isModalOpen && (
                 <ProductModal
+                    key={selectedItem?.id || 'new'}
                     item={selectedItem}
                     isOpen={isModalOpen}
                     onClose={() => setIsModalOpen(false)}

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { UploadCloud, FileText, AlertCircle, Loader2, CheckCircle } from 'lucide-react';
 import { api } from '../../services/api';
@@ -65,6 +65,7 @@ export default function UploadZone({ onDocumentUploaded }) {
         if (e.dataTransfer.files && e.dataTransfer.files[0]) {
             handleFile(e.dataTransfer.files[0]);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     return (

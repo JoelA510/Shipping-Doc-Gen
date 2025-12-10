@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { ShieldCheck, ShieldAlert, Shield } from 'lucide-react';
 
 export default function AESStatusBadge({ status, itn }) {

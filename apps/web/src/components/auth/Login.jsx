@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { Ship, User, Lock, ArrowRight, AlertCircle } from 'lucide-react';
 import { api } from '../../services/api';
 

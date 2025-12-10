@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import React, { useContext } from 'react';
+import { useContext } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { SearchContext, SearchProvider } from '../SearchContext';
 import { fetchFilteredTasks } from '../../../services/taskService';

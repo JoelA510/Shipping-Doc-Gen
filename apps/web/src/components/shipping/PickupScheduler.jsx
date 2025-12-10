@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Calendar, Clock, Truck, Loader } from 'lucide-react';
 
 export default function PickupScheduler({ onClose }) {

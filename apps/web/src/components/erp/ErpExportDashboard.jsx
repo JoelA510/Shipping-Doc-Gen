@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../../services/api';
-import { Loader2, Play, Download, Settings, FileText, Globe } from 'lucide-react';
+import { Loader2, Play, Download, Settings } from 'lucide-react';
 
 export default function ErpExportDashboard() {
     const [configs, setConfigs] = useState([]);
@@ -19,6 +19,7 @@ export default function ErpExportDashboard() {
         // Poll for job updates every 5 seconds
         const interval = setInterval(fetchJobs, 5000);
         return () => clearInterval(interval);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const loadData = async () => {
@@ -65,7 +66,7 @@ export default function ErpExportDashboard() {
     };
 
     // Helper to download File result (Mocked as if it returned file content or path)
-    const handleDownload = (job) => {
+    const handleDownload = () => {
         alert('In a real app, this would download the generated file from storage.');
     };
 

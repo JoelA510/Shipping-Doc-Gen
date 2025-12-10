@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, X, Star, Edit2, Trash2, FileText } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Plus, X, Star, Trash2, FileText } from 'lucide-react';
 
 export default function TemplateManager({ onTemplateApply, onClose }) {
     const [templates, setTemplates] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [showCreate, setShowCreate] = useState(false);
-    const [editingTemplate, setEditingTemplate] = useState(null);
+
 
     useEffect(() => {
         loadTemplates();
@@ -96,7 +95,7 @@ export default function TemplateManager({ onTemplateApply, onClose }) {
                             <FileText className="w-16 h-16 mx-auto text-gray-300 mb-4" />
                             <p className="text-gray-500 mb-4">No templates yet</p>
                             <button
-                                onClick={() => setShowCreate(true)}
+                                onClick={() => alert('Create functionality coming soon')}
                                 className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-3 rounded-lg hover:shadow-lg transition"
                             >
                                 <Plus className="w-5 h-5 inline mr-2" />

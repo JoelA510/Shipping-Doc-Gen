@@ -1,40 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { X } from 'lucide-react';
 
 export default function ProductModal({ item, isOpen, onClose, onSave }) {
     const [formData, setFormData] = useState({
-        sku: '',
-        description: '',
-        htsCode: '',
-        countryOfOrigin: '',
-        eccn: '',
-        defaultUnitValue: '',
-        defaultNetWeightKg: '',
-        uom: 'EA'
+        sku: item?.sku || '',
+        description: item?.description || '',
+        htsCode: item?.htsCode || '',
+        countryOfOrigin: item?.countryOfOrigin || '',
+        eccn: item?.eccn || '',
+        defaultUnitValue: item?.defaultUnitValue || '',
+        defaultNetWeightKg: item?.defaultNetWeightKg || '',
+        uom: item?.uom || 'EA'
     });
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState(null);
-
-    useEffect(() => {
-        if (item) {
-            setFormData({
-                sku: item.sku || '',
-                description: item.description || '',
-                htsCode: item.htsCode || '',
-                countryOfOrigin: item.countryOfOrigin || '',
-                eccn: item.eccn || '',
-                defaultUnitValue: item.defaultUnitValue || '',
-                defaultNetWeightKg: item.defaultNetWeightKg || '',
-                uom: item.uom || 'EA'
-            });
-        } else {
-            setFormData({
-                sku: '', description: '', htsCode: '', countryOfOrigin: '',
-                eccn: '', defaultUnitValue: '', defaultNetWeightKg: '', uom: 'EA'
-            });
-        }
-        setError(null);
-    }, [item, isOpen]);
 
     if (!isOpen) return null;
 

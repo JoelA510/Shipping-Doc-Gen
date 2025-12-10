@@ -42,6 +42,7 @@ export const FeatureFlagProvider = ({ children }) => {
     );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useFeatureFlags = () => {
     const context = useContext(FeatureFlagContext);
     if (!context) {
