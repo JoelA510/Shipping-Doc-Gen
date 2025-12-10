@@ -1,15 +1,35 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { prisma } = require('../queue'); // Use shared instance
+const config = require('../config');
 
 // Helper to generate token
 const generateToken = (user) => {
-    const secret = process.env.AUTH_SECRET || 'default-secret-key';
-    return jwt.sign({ id: user.id, username: user.username, role: user.role }, secret, { expiresIn: '24h' });
+    return jwt.sign(
+        { id: user.id, username: user.username, role: user.role },
+        config.authSecret,
+        { expiresIn: '24h' }
+    );
+};
+
+// Validate password strength
+const validatePassword = (password) => {
+    if (password.length < 8) {
+        throw new Error('Password must be at least 8 characters long');
+    }
+    if (!/[A-Za-z]/.test(password)) {
+        throw new Error('Password must contain at least one letter');
+    }
+    if (!/\d/.test(password)) {
+        throw new Error('Password must contain at least one number');
+    }
 };
 
 // Register new user
 const register = async (username, password) => {
+    // Validate password
+    validatePassword(password);
+
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
         where: { username }
@@ -56,8 +76,7 @@ const login = async (username, password) => {
 // Verify token middleware
 const verifyToken = (token) => {
     try {
-        const secret = process.env.AUTH_SECRET || 'default-secret-key';
-        return jwt.verify(token, secret);
+        return jwt.verify(token, config.authSecret);
     } catch (err) {
         throw new Error('Invalid token');
     }

@@ -1,3 +1,4 @@
+const config = require('./config'); // Load config first to validate env
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -21,7 +22,8 @@ const erpRouter = require('./routes/erp');
 const configRouter = require('./routes/config');
 
 
-const port = process.env.PORT || 3001;
+
+const port = config.port;
 const app = express();
 
 // Security middleware

@@ -12,6 +12,11 @@ jest.mock('../src/queue/index', () => ({
     }
 }));
 
+jest.mock('../src/config', () => ({
+    authSecret: 'test-secret',
+    nodeEnv: 'test'
+}));
+
 const { prisma } = require('../src/queue/index');
 
 describe('Auth Service', () => {
@@ -25,13 +30,13 @@ describe('Auth Service', () => {
             const mockUser = {
                 id: '1',
                 username: 'test',
-                password: await bcrypt.hash('password', 10),
+                password: await bcrypt.hash('Password123', 10),
                 role: 'user'
             };
 
             prisma.user.findUnique.mockResolvedValue(mockUser);
 
-            const result = await authService.login('test', 'password');
+            const result = await authService.login('test', 'Password123');
 
             expect(result).toHaveProperty('token');
             expect(result.user).toEqual({
@@ -48,7 +53,7 @@ describe('Auth Service', () => {
             const mockUser = {
                 id: '1',
                 username: 'test',
-                password: await bcrypt.hash('password', 10)
+                password: await bcrypt.hash('Password123', 10)
             };
 
             prisma.user.findUnique.mockResolvedValue(mockUser);
@@ -60,6 +65,37 @@ describe('Auth Service', () => {
             prisma.user.findUnique.mockResolvedValue(null);
 
             await expect(authService.login('test', 'password')).rejects.toThrow('Invalid credentials');
+        });
+    });
+
+    describe('register', () => {
+        it('should throw error for short password', async () => {
+            await expect(authService.register('newuser', 'short')).rejects.toThrow('Password must be at least 8 characters long');
+        });
+
+        it('should throw error for password without letters', async () => {
+            await expect(authService.register('newuser', '12345678')).rejects.toThrow('Password must contain at least one letter');
+        });
+
+        it('should throw error for password without numbers', async () => {
+            await expect(authService.register('newuser', 'password')).rejects.toThrow('Password must contain at least one number');
+        });
+
+        it('should register user with valid strong password', async () => {
+            const mockUser = {
+                id: '2',
+                username: 'newuser',
+                password: 'hashedpassword',
+                role: 'user'
+            };
+
+            prisma.user.findUnique.mockResolvedValue(null);
+            prisma.user.create.mockResolvedValue(mockUser);
+
+            const result = await authService.register('newuser', 'StrongPass123');
+
+            expect(result).toHaveProperty('token');
+            expect(result.user.username).toBe('newuser');
         });
     });
 });
