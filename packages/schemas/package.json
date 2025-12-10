@@ -1,8 +1,9 @@
 {
     "name": "@formwaypoint/schemas",
     "version": "0.1.0",
-    "main": "index.ts",
+    "main": "index.js",
     "scripts": {
+        "build": "tsc",
         "test": "vitest run",
         "lint": "echo \"Linting schemas...\"",
         "typecheck": "tsc --noEmit"

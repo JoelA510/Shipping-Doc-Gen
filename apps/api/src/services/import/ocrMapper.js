@@ -4,47 +4,96 @@
  * @param {import('../../../../../services/ingestion/src/types').CanonicalDoc} ocrResult 
  * @returns {Object} ShipmentV1 compatible object
  */
+const crypto = require('crypto');
+const { ShipmentV1Schema } = require('@formwaypoint/schemas');
+const {
+    DEFAULT_CURRENCY,
+    DEFAULT_INCOTERM,
+    DEFAULT_ORIGIN_COUNTRY,
+    DEFAULT_DEST_COUNTRY
+} = require('../../config/shippingDefaults');
+
+/**
+ * Maps the generic Ingestion Result (CanonicalDoc) to the ShipmentV1 schema.
+ * 
+ * @param {import('../../../../../services/ingestion/src/types').CanonicalDoc} ocrResult 
+ * @returns {Object} ShipmentV1 compatible object
+ */
 function mapOcrToShipment(ocrResult) {
     if (!ocrResult || !ocrResult.header) {
         throw new Error('Invalid OCR result: missing header');
     }
 
     const { header, lines } = ocrResult;
-
-    // Map Header
-    const shipmentHeader = {
-        incoterm: header.incoterm || 'EXW', // Default if missing, or maybe validation will catch it
-        currency: header.currency || 'USD',
-        originCountry: 'US', // Default or need to extract? Ingestion types don't provide origin country on header yet.
-        destinationCountry: 'US', // Placeholder
-        erpOrderId: header.reference,
-        shipperName: header.shipper,
-        consigneeName: header.consignee,
-
-        // Aggregates
-        totalCustomsValue: ocrResult.checksums?.valueUsd || lines.reduce((acc, line) => acc + (line.valueUsd || 0), 0),
-        totalWeightKg: ocrResult.checksums?.netWeightKg || lines.reduce((acc, line) => acc + (line.netWeightKg || 0), 0),
-        numPackages: ocrResult.checksums?.quantity || lines.reduce((acc, line) => acc + (line.quantity || 0), 0), // Approx
-    };
+    const shipmentId = crypto.randomUUID();
 
     // Map Lines
     const shipmentLines = lines.map(line => ({
-        description: line.description,
-        quantity: line.quantity,
-        unitValue: line.valueUsd && line.quantity ? (line.valueUsd / line.quantity) : 0, // Ingestion gives total valueUsd per line typically? Checking types... 
-        // type says "valueUsd", usually line total. 
-        // Wait, types.js says "valueUsd". Let's assume extended value.
-        extendedValue: line.valueUsd,
-        netWeightKg: line.netWeightKg,
-        htsCode: line.htsCode,
-        countryOfOrigin: line.countryOfOrigin,
+        id: crypto.randomUUID(),
+        shipmentId: shipmentId,
+        description: line.description || 'Unknown Item',
+        quantity: line.quantity || 1,
+        uom: line.quantityUom || 'EA',
+        unitValue: line.valueUsd && line.quantity ? (line.valueUsd / line.quantity) : 0,
+        extendedValue: line.valueUsd || 0,
+        netWeightKg: line.netWeightKg || 0,
+        htsCode: line.htsCode || '000000',
+        countryOfOrigin: line.countryOfOrigin || DEFAULT_ORIGIN_COUNTRY,
         sku: line.partNumber
     }));
 
-    return {
-        header: shipmentHeader,
-        lines: shipmentLines
+    // Calculate aggregates first to ensure validity
+    const aggValue = ocrResult.checksums?.valueUsd || lines.reduce((acc, line) => acc + (line.valueUsd || 0), 0);
+    const aggWeight = ocrResult.checksums?.netWeightKg || lines.reduce((acc, line) => acc + (line.netWeightKg || 0), 0);
+    const aggQty = ocrResult.checksums?.quantity || lines.reduce((acc, line) => acc + (line.quantity || 0), 0);
+
+    // Map Header
+    const shipmentData = {
+        id: shipmentId,
+        schemaVersion: 'shipment.v1',
+        incoterm: header.incoterm || DEFAULT_INCOTERM,
+        currency: header.currency || DEFAULT_CURRENCY,
+        originCountry: DEFAULT_ORIGIN_COUNTRY,
+        destinationCountry: DEFAULT_DEST_COUNTRY,
+        erpOrderId: header.reference,
+
+        shipper: {
+            id: crypto.randomUUID(),
+            name: header.shipper || 'Unknown Shipper',
+            addressLine1: 'Unknown Address',
+            city: 'Unknown City',
+            postalCode: '00000',
+            countryCode: DEFAULT_ORIGIN_COUNTRY
+        },
+        consignee: {
+            id: crypto.randomUUID(),
+            name: header.consignee || 'Unknown Consignee',
+            addressLine1: 'Unknown Address',
+            city: 'Unknown City',
+            postalCode: '00000',
+            countryCode: DEFAULT_DEST_COUNTRY
+        },
+
+        // Aggregates
+        totalCustomsValue: aggValue >= 0 ? aggValue : 0,
+        totalWeightKg: aggWeight >= 0 ? aggWeight : 0,
+        numPackages: aggQty > 0 ? aggQty : 1, // Default to 1 to satisfy .positive()
+
+        lineItems: shipmentLines,
+
+        // Metadata required by schema
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        createdByUserId: 'system-ocr',
     };
+
+    // optional: Validate against schema (warn or throw)
+    try {
+        return ShipmentV1Schema.parse(shipmentData);
+    } catch (err) {
+        console.error('OCR Mapping Validation Failed:', err.errors);
+        throw new Error(`OCR Validation Failed: ${err.message}`);
+    }
 }
 
 module.exports = {
