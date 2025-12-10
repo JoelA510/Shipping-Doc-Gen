@@ -18,5 +18,5 @@ This document lists the recommended order for processing the refactoring tickets
     * *Rationale:* Reduces latency and external API usage/costs.
 8. **ARCH-002** – **Structured Logging & Error Handling** (`docs/refactor/ARCH-002_structured_logging.md`) [COMPLETED]
     * *Rationale:* Improves observability and debugging.
-9. **CODE-001** – **Refactor OCR Mapper & Shared Schemas** (`docs/refactor/CODE-001_ocr_refactor.md`)
+9. **CODE-001** – **Refactor OCR Mapper & Shared Schemas** (`docs/refactor/CODE-001_ocr_refactor.md`) [COMPLETED]
     * *Rationale:* Code cleanup and maintainability. Lower risk/impact than the above.
