@@ -12,7 +12,8 @@ router.get('/', async (req, res) => {
         const result = await itemService.listItems({
             search: req.query.search,
             limit,
-            offset
+            offset,
+            userId: req.user.id
         });
 
         res.json({
@@ -32,7 +33,7 @@ router.get('/', async (req, res) => {
 // POST /items
 router.post('/', async (req, res) => {
     try {
-        const userId = req.user?.id;
+        const userId = req.user.id;
         const item = await itemService.createItem(req.body, userId);
         res.status(201).json(item);
     } catch (error) {
@@ -43,7 +44,7 @@ router.post('/', async (req, res) => {
 // GET /items/:id
 router.get('/:id', async (req, res) => {
     try {
-        const item = await itemService.getItem(req.params.id);
+        const item = await itemService.getItem(req.params.id, req.user.id);
         if (!item) return res.status(404).json({ error: 'Item not found' });
         res.json(item);
     } catch (error) {
@@ -54,7 +55,7 @@ router.get('/:id', async (req, res) => {
 // PUT /items/:id
 router.put('/:id', async (req, res) => {
     try {
-        const item = await itemService.updateItem(req.params.id, req.body);
+        const item = await itemService.updateItem(req.params.id, req.body, req.user.id);
         res.json(item);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -64,7 +65,7 @@ router.put('/:id', async (req, res) => {
 // DELETE /items/:id
 router.delete('/:id', async (req, res) => {
     try {
-        await itemService.deleteItem(req.params.id);
+        await itemService.deleteItem(req.params.id, req.user.id);
         res.status(204).send();
     } catch (error) {
         res.status(500).json({ error: error.message });

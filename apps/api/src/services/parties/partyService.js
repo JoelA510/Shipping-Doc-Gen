@@ -4,16 +4,17 @@ const prisma = new PrismaClient();
 const partyService = {
     /**
      * List parties in the address book
-     * @param {Object} query - { search, limit, offset }
+     * @param {Object} query - { search, limit, offset, userId }
      */
-    listParties: async ({ search, limit = 20, offset = 0 }) => {
+    listParties: async ({ search, limit = 20, offset = 0, userId }) => {
         const where = {
-            isAddressBookEntry: true
+            isAddressBookEntry: true,
+            createdByUserId: userId
         };
 
         if (search) {
             where.OR = [
-                { name: { contains: search } }, // Case insensitive in SQLite by default? Check provider.
+                { name: { contains: search } },
                 { city: { contains: search } },
                 { countryCode: { contains: search } }
             ];
@@ -35,8 +36,12 @@ const partyService = {
     /**
      * Get a single party
      */
-    getParty: async (id) => {
-        return prisma.party.findUnique({ where: { id } });
+    getParty: async (id, userId) => {
+        const party = await prisma.party.findUnique({ where: { id } });
+        if (party && party.createdByUserId !== userId) {
+            return null; // Or throw custom Forbidden error
+        }
+        return party;
     },
 
     /**
@@ -55,7 +60,13 @@ const partyService = {
     /**
      * Update an existing party
      */
-    updateParty: async (id, data) => {
+    updateParty: async (id, data, userId) => {
+        // Verify ownership
+        const party = await prisma.party.findUnique({ where: { id } });
+        if (!party || party.createdByUserId !== userId) {
+            throw new Error('Party not found or access denied');
+        }
+
         return prisma.party.update({
             where: { id },
             data
@@ -64,10 +75,14 @@ const partyService = {
 
     /**
      * Delete (or soft delete) a party
-     * For now, strict delete, but could fail if linked to shipments.
-     * Recommendation: Just mark inactive or implement safe delete check.
      */
-    deleteParty: async (id) => {
+    deleteParty: async (id, userId) => {
+        // Verify ownership
+        const party = await prisma.party.findUnique({ where: { id } });
+        if (!party || party.createdByUserId !== userId) {
+            throw new Error('Party not found or access denied');
+        }
+
         // Validation: Check if linked to any shipment
         const usedCount = await prisma.shipment.count({
             where: {

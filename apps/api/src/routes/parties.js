@@ -12,7 +12,8 @@ router.get('/', async (req, res) => {
         const result = await partyService.listParties({
             search: req.query.search,
             limit,
-            offset
+            offset,
+            userId: req.user.id // Pass user ID
         });
 
         res.json({
@@ -33,7 +34,7 @@ router.get('/', async (req, res) => {
 // POST /parties
 router.post('/', async (req, res) => {
     try {
-        const userId = req.user?.id || 'unknown';
+        const userId = req.user.id;
         // Basic validation
         if (!req.body.name || !req.body.addressLine1 || !req.body.city || !req.body.countryCode) {
             return res.status(400).json({ error: 'Missing required fields' });
@@ -49,7 +50,7 @@ router.post('/', async (req, res) => {
 // GET /parties/:id
 router.get('/:id', async (req, res) => {
     try {
-        const party = await partyService.getParty(req.params.id);
+        const party = await partyService.getParty(req.params.id, req.user.id);
         if (!party) return res.status(404).json({ error: 'Party not found' });
         res.json(party);
     } catch (error) {
@@ -60,7 +61,7 @@ router.get('/:id', async (req, res) => {
 // PUT /parties/:id
 router.put('/:id', async (req, res) => {
     try {
-        const updated = await partyService.updateParty(req.params.id, req.body);
+        const updated = await partyService.updateParty(req.params.id, req.body, req.user.id);
         res.json(updated);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -70,7 +71,7 @@ router.put('/:id', async (req, res) => {
 // DELETE /parties/:id
 router.delete('/:id', async (req, res) => {
     try {
-        await partyService.deleteParty(req.params.id);
+        await partyService.deleteParty(req.params.id, req.user.id);
         res.status(204).send();
     } catch (error) {
         res.status(500).json({ error: error.message });

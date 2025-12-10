@@ -27,8 +27,16 @@ router.post('/:id/rates', async (req, res) => {
             return res.status(404).json({ error: 'Shipment not found' });
         }
 
+        // Security Check: Shipment Ownership
+        if (shipment.createdByUserId !== req.user.id) {
+            return res.status(403).json({ error: 'Access denied to shipment' });
+        }
+
         const carrierAccounts = await prisma.carrierAccount.findMany({
-            where: { isActive: true }
+            where: {
+                isActive: true,
+                userId: req.user.id // SCOPED
+            }
         });
 
         if (carrierAccounts.length === 0) {
@@ -101,6 +109,15 @@ router.post('/:id/book', async (req, res) => {
 
         if (!carrierAccountId || !serviceCode) {
             return res.status(400).json({ error: 'Missing carrierAccountId or serviceCode' });
+        }
+
+        // Verify Carrier Account Ownership
+        const account = await prisma.carrierAccount.findUnique({
+            where: { id: carrierAccountId }
+        });
+
+        if (!account || account.userId !== req.user.id) {
+            return res.status(403).json({ error: 'Access denied to carrier account' });
         }
 
         const gateway = await getCarrierGateway(carrierAccountId);

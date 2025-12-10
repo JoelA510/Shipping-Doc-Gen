@@ -5,8 +5,10 @@ const itemService = {
     /**
      * List items with optional search and pagination
      */
-    listItems: async ({ search, limit = 20, offset = 0 }) => {
-        const where = {};
+    listItems: async ({ search, limit = 20, offset = 0, userId }) => {
+        const where = {
+            createdByUserId: userId
+        };
 
         if (search) {
             where.OR = [
@@ -32,15 +34,23 @@ const itemService = {
     /**
      * Get single item by ID
      */
-    getItem: async (id) => {
-        return prisma.item.findUnique({ where: { id } });
+    getItem: async (id, userId) => {
+        const item = await prisma.item.findUnique({ where: { id } });
+        if (item && item.createdByUserId !== userId) {
+            return null;
+        }
+        return item;
     },
 
     /**
      * Get item by SKU
      */
-    getItemBySku: async (sku) => {
-        return prisma.item.findUnique({ where: { sku } });
+    getItemBySku: async (sku, userId) => {
+        const item = await prisma.item.findUnique({ where: { sku } });
+        if (item && item.createdByUserId !== userId) {
+            return null;
+        }
+        return item;
     },
 
     /**
@@ -50,7 +60,13 @@ const itemService = {
         // Check uniqueness of SKU if provided manually
         if (data.sku) {
             const existing = await prisma.item.findUnique({ where: { sku: data.sku } });
-            if (existing) throw new Error(`Item with SKU ${data.sku} already exists.`);
+            if (existing) {
+                // If it exists but belongs to someone else, we still can't duplicate SKU globally if usage is global
+                // But if items are tenant-scoped, maybe SKUs should be unique per tenant?
+                // Schema says SKU is @unique globally.
+                // So we must check global uniqueness.
+                throw new Error(`Item with SKU ${data.sku} already exists.`);
+            }
         }
 
         return prisma.item.create({
@@ -64,7 +80,12 @@ const itemService = {
     /**
      * Update existing item
      */
-    updateItem: async (id, data) => {
+    updateItem: async (id, data, userId) => {
+        const item = await prisma.item.findUnique({ where: { id } });
+        if (!item || item.createdByUserId !== userId) {
+            throw new Error('Item not found or access denied');
+        }
+
         return prisma.item.update({
             where: { id },
             data
@@ -74,7 +95,12 @@ const itemService = {
     /**
      * Delete item
      */
-    deleteItem: async (id) => {
+    deleteItem: async (id, userId) => {
+        const item = await prisma.item.findUnique({ where: { id } });
+        if (!item || item.createdByUserId !== userId) {
+            throw new Error('Item not found or access denied');
+        }
+
         return prisma.item.delete({ where: { id } });
     }
 };
