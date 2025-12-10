@@ -15,6 +15,80 @@ const logger = require('../utils/logger');
 
 // ...
 
+const LBS_TO_KG = 0.453592;
+
+/**
+ * POST /api/carriers/rates
+ * Ad-hoc rate shopping (no saved shipment required).
+ * Normalizes units (LBS -> KG) before calling gateways.
+ */
+router.post('/rates', async (req, res) => {
+    try {
+        const { shipment } = req.body;
+
+        if (!shipment || !shipment.from || !shipment.to || !shipment.package) {
+            return res.status(400).json({ error: 'Invalid shipment data' });
+        }
+
+        // 1. Normalize Weight (LBS -> KG)
+        // Default to LBS if not specified, as that's what the UI sends currently
+        let weightKg = parseFloat(shipment.package.weight);
+        const unit = shipment.package.weightUnit || 'lb';
+
+        if (unit.toLowerCase() === 'lb' || unit.toLowerCase() === 'lbs') {
+            weightKg = weightKg * LBS_TO_KG;
+        }
+
+        // 2. Construct Normalized Shipment Object for Gateways
+        // Gateways expect a specific shape (similar to Prisma model)
+        const normalizedShipment = {
+            originCountry: shipment.from.country || 'US',
+            destinationCountry: shipment.to.country || 'US',
+            totalWeightKg: weightKg,
+            // Mock line items if not provided (ad-hoc usually just has weight)
+            lineItems: []
+        };
+
+        // 3. Get Active Carrier Accounts for User
+        const carrierAccounts = await prisma.carrierAccount.findMany({
+            where: {
+                isActive: true,
+                userId: req.user.id
+            }
+        });
+
+        if (carrierAccounts.length === 0) {
+            // For ad-hoc, maybe return empty list instead of 400? 
+            // But UI expects rates or error. Let's return empty list to avoid blocking UI flow if just testing.
+            // Actually, existing behavior was 400. Let's stick to consistent behavior or empty.
+            // Better to return empty list so UI says "No rates found" rather than "Error".
+            return res.json({ data: [] });
+        }
+
+        // 4. Rate Shop
+        const ratesPromises = carrierAccounts.map(async (account) => {
+            try {
+                const gateway = await getCarrierGateway(account.id);
+                // internal gateways expect (shipment, lineItems)
+                const rates = await gateway.getRates(normalizedShipment, []);
+                return rates.map(r => ({ ...r, carrierAccountId: account.id, provider: account.provider }));
+            } catch (err) {
+                logger.error('Ad-hoc rate shop error', { accountId: account.id, error: err.message });
+                return [];
+            }
+        });
+
+        const nestedRates = await Promise.all(ratesPromises);
+        const allRates = nestedRates.flat();
+
+        res.json({ data: allRates });
+
+    } catch (error) {
+        logger.error('Ad-hoc rate shop failed', { error: error.message });
+        res.status(500).json({ error: 'Failed to shop rates' });
+    }
+});
+
 router.post('/:id/rates', async (req, res) => {
     try {
         const { id } = req.params;

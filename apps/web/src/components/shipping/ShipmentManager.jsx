@@ -44,7 +44,15 @@ export default function ShipmentManager({ documentId, initialData }) {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ shipment })
+                body: JSON.stringify({
+                    shipment: {
+                        ...shipment,
+                        package: {
+                            ...shipment.package,
+                            weightUnit: 'lb' // Explicitly invoke normalization
+                        }
+                    }
+                })
             });
             const data = await res.json();
             setRates(data.data || []);
