@@ -1,6 +1,6 @@
 const { verifyToken } = require('../services/auth');
 
-function requireAuth(req, res, next) {
+async function requireAuth(req, res, next) {
     const authHeader = req.headers.authorization;
 
     if (!authHeader) {
@@ -14,7 +14,7 @@ function requireAuth(req, res, next) {
     }
 
     try {
-        const decoded = verifyToken(token);
+        const decoded = await verifyToken(token);
         req.user = decoded; // { id, username, role, ... }
         next();
     } catch (error) {

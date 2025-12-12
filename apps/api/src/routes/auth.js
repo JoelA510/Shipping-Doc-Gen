@@ -27,6 +27,18 @@ router.post('/login', async (req, res) => {
     }
 });
 
+router.post('/logout', requireAuth, async (req, res) => {
+    try {
+        const { jti, exp } = req.user;
+        if (jti && exp) {
+            await authService.revokeToken(jti, exp);
+        }
+        res.json({ message: 'Logged out successfully' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 router.get('/me', requireAuth, async (req, res) => {
     try {
         // req.user is populated by requireAuth middleware

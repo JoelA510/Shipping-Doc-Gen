@@ -27,37 +27,37 @@ describe('Auth Middleware', () => {
     });
 
     describe('requireAuth', () => {
-        it('should return 401 if no authorization header', () => {
-            requireAuth(mockReq, mockRes, next);
+        it('should return 401 if no authorization header', async () => {
+            await requireAuth(mockReq, mockRes, next);
             expect(mockRes.status).toHaveBeenCalledWith(401);
             expect(mockRes.json).toHaveBeenCalledWith({ error: expect.stringMatching(/No authorization header/) });
             expect(next).not.toHaveBeenCalled();
         });
 
-        it('should return 401 if malformed authorization header', () => {
+        it('should return 401 if malformed authorization header', async () => {
             mockReq.headers.authorization = 'Bearer'; // Missing token
-            requireAuth(mockReq, mockRes, next);
+            await requireAuth(mockReq, mockRes, next);
             expect(mockRes.status).toHaveBeenCalledWith(401);
             expect(mockRes.json).toHaveBeenCalledWith({ error: expect.stringMatching(/Malformed/) });
             expect(next).not.toHaveBeenCalled();
         });
 
-        it('should return 401 if token is invalid', () => {
+        it('should return 401 if token is invalid', async () => {
             mockReq.headers.authorization = 'Bearer invalid-token';
             verifyToken.mockImplementation(() => { throw new Error('Invalid token'); });
 
-            requireAuth(mockReq, mockRes, next);
+            await requireAuth(mockReq, mockRes, next);
             expect(mockRes.status).toHaveBeenCalledWith(401);
             expect(mockRes.json).toHaveBeenCalledWith({ error: expect.stringMatching(/Invalid or expired/) });
             expect(next).not.toHaveBeenCalled();
         });
 
-        it('should call next() and attach user if token is valid', () => {
+        it('should call next() and attach user if token is valid', async () => {
             mockReq.headers.authorization = 'Bearer valid-token';
             const mockUser = { id: 1, role: 'user' };
             verifyToken.mockReturnValue(mockUser);
 
-            requireAuth(mockReq, mockRes, next);
+            await requireAuth(mockReq, mockRes, next);
             expect(verifyToken).toHaveBeenCalledWith('valid-token');
             expect(mockReq.user).toEqual(mockUser);
             expect(next).toHaveBeenCalled();

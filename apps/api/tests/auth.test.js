@@ -3,6 +3,17 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
 // Mock dependencies
+jest.mock('uuid', () => ({ v4: () => 'test-jti' }));
+
+jest.mock('../src/services/redis', () => ({
+    connection: {
+        setex: jest.fn(),
+        get: jest.fn()
+    }
+}));
+
+const { connection: redis } = require('../src/services/redis');
+
 jest.mock('../src/queue/index', () => ({
     prisma: {
         user: {
@@ -22,7 +33,6 @@ const { prisma } = require('../src/queue/index');
 describe('Auth Service', () => {
     beforeEach(() => {
         jest.clearAllMocks();
-        process.env.AUTH_SECRET = 'test-secret';
     });
 
     describe('login', () => {
@@ -47,6 +57,7 @@ describe('Auth Service', () => {
 
             const decoded = jwt.verify(result.token, 'test-secret');
             expect(decoded.id).toBe('1');
+            expect(decoded.jti).toBe('test-jti');
         });
 
         it('should throw error for invalid password', async () => {
@@ -96,6 +107,32 @@ describe('Auth Service', () => {
 
             expect(result).toHaveProperty('token');
             expect(result.user.username).toBe('newuser');
+        });
+    });
+
+    describe('revocation', () => {
+        it('should revoke token by adding to redis', async () => {
+            const now = Math.floor(Date.now() / 1000);
+            await authService.revokeToken('test-jti', now + 3600);
+
+            expect(redis.setex).toHaveBeenCalledWith('blacklist:test-jti', expect.any(Number), 'revoked');
+        });
+
+        it('should verify token asynchronously and check blacklist', async () => {
+            const token = jwt.sign({ id: '1', jti: 'test-jti' }, 'test-secret');
+
+            redis.get.mockResolvedValue(null); // Not revoked
+
+            const decoded = await authService.verifyToken(token);
+            expect(decoded.id).toBe('1');
+        });
+
+        it('should throw if token is in blacklist', async () => {
+            const token = jwt.sign({ id: '1', jti: 'test-jti' }, 'test-secret');
+
+            redis.get.mockResolvedValue('revoked');
+
+            await expect(authService.verifyToken(token)).rejects.toThrow('Token revoked');
         });
     });
 });

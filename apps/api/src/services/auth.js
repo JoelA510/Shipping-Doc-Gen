@@ -3,10 +3,18 @@ const bcrypt = require('bcryptjs');
 const { prisma } = require('../queue'); // Use shared instance
 const config = require('../config');
 
+const { connection: redis } = require('./redis');
+const { v4: uuidv4 } = require('uuid');
+
 // Helper to generate token
 const generateToken = (user) => {
     return jwt.sign(
-        { id: user.id, username: user.username, role: user.role },
+        {
+            id: user.id,
+            username: user.username,
+            role: user.role,
+            jti: uuidv4() // Unique ID for revocation
+        },
         config.authSecret,
         { expiresIn: '24h' }
     );
@@ -27,58 +35,56 @@ const validatePassword = (password) => {
 
 // Register new user
 const register = async (username, password) => {
-    // Validate password
     validatePassword(password);
-
-    // Check if user exists
-    const existingUser = await prisma.user.findUnique({
-        where: { username }
-    });
-
-    if (existingUser) {
-        throw new Error('Username already exists');
-    }
-
-    // Hash password
+    const existingUser = await prisma.user.findUnique({ where: { username } });
+    if (existingUser) throw new Error('Username already exists');
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create user
-    const user = await prisma.user.create({
-        data: {
-            username,
-            password: hashedPassword
-        }
-    });
-
+    const user = await prisma.user.create({ data: { username, password: hashedPassword } });
     const token = generateToken(user);
     return { user: { id: user.id, username: user.username, role: user.role }, token };
 };
 
 // Login user
 const login = async (username, password) => {
-    const user = await prisma.user.findUnique({
-        where: { username }
-    });
-
-    if (!user) {
-        throw new Error('Invalid credentials');
-    }
-
+    const user = await prisma.user.findUnique({ where: { username } });
+    if (!user) throw new Error('Invalid credentials');
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-        throw new Error('Invalid credentials');
-    }
-
+    if (!isMatch) throw new Error('Invalid credentials');
     const token = generateToken(user);
     return { user: { id: user.id, username: user.username, role: user.role }, token };
 };
 
+// Revoke a token
+const revokeToken = async (jti, exp) => {
+    const now = Math.floor(Date.now() / 1000);
+    const ttl = exp - now;
+
+    if (ttl > 0) {
+        await redis.setex(`blacklist:${jti}`, ttl, 'revoked');
+    }
+};
+
+// Check if token is revoked
+const checkRevoked = async (jti) => {
+    const status = await redis.get(`blacklist:${jti}`);
+    return status === 'revoked';
+};
+
 // Verify token middleware
-const verifyToken = (token) => {
+const verifyToken = async (token) => {
     try {
-        return jwt.verify(token, config.authSecret);
+        const decoded = jwt.verify(token, config.authSecret);
+        if (!decoded || !decoded.jti) {
+            return decoded;
+        }
+        const isRevoked = await checkRevoked(decoded.jti);
+        if (isRevoked) {
+            throw new Error('Token revoked');
+        }
+        return decoded;
     } catch (err) {
-        throw new Error('Invalid token');
+        if (err.message === 'Token revoked') throw err;
+        throw new Error('Invalid or expired token');
     }
 };
 
@@ -86,5 +92,6 @@ module.exports = {
     register,
     login,
     verifyToken,
-    prisma // Export prisma client for use in other services if needed
+    revokeToken,
+    prisma
 };
