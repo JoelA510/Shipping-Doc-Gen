@@ -45,9 +45,11 @@ describe('PartyService', () => {
     });
 
     test('deleteParty should prevent deletion if linked to shipment', async () => {
+        const userId = 'user-1';
         prisma.shipment.count.mockResolvedValue(1); // Linked
+        prisma.party.findUnique.mockResolvedValue({ id: '123', createdByUserId: userId });
 
-        await partyService.deleteParty('123');
+        await partyService.deleteParty('123', userId);
 
         // Should soft delete/archive instead of hard delete
         expect(prisma.party.update).toHaveBeenCalledWith({
@@ -58,9 +60,11 @@ describe('PartyService', () => {
     });
 
     test('deleteParty should hard delete if unused', async () => {
+        const userId = 'user-1';
         prisma.shipment.count.mockResolvedValue(0); // Not linked
+        prisma.party.findUnique.mockResolvedValue({ id: '123', createdByUserId: userId });
 
-        await partyService.deleteParty('123');
+        await partyService.deleteParty('123', userId);
 
         expect(prisma.party.delete).toHaveBeenCalledWith({ where: { id: '123' } });
     });

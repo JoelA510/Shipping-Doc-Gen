@@ -1,10 +1,11 @@
 const CarrierAdapter = require('./base');
+const config = require('../../config');
 
 class UPSAdapter extends CarrierAdapter {
     constructor(credentials, accountNumber) {
         super(credentials);
         this.accountNumber = accountNumber;
-        this.baseUrl = process.env.UPS_API_URL || 'https://wwwcie.ups.com/api';
+        this.baseUrl = config.carriers.upsUrl;
     }
 
     async getRates(shipment) {

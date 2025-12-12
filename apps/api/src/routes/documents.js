@@ -175,7 +175,17 @@ router.put('/:id', [
         });
 
         console.log(`Updated document ${req.params.id}`);
-        res.json(updated);
+
+        const parsed = {
+            ...updated,
+            header: updated.header ? JSON.parse(updated.header) : null,
+            lines: updated.lines ? JSON.parse(updated.lines) : [],
+            checksums: updated.checksums ? JSON.parse(updated.checksums) : null,
+            references: updated.references ? JSON.parse(updated.references) : [],
+            meta: updated.meta ? JSON.parse(updated.meta) : null,
+        };
+
+        res.json(parsed);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -184,14 +194,14 @@ router.put('/:id', [
 // Trigger export
 router.post('/:id/export', [
     ensureDocOwner,
-    body('type').isIn(['commercial-invoice', 'packing-list']),
+    body('type').isIn(['commercial-invoice', 'packing-list', 'sli']),
     body('template').optional().isString(),
     validate
 ], async (req, res) => {
     const { type, template } = req.body;
     try {
         const { TEMPLATE_MAP } = require('../config/templates'); // Assuming this exists as in original
-        const templateName = TEMPLATE_MAP[template] || 'sli';
+        const templateName = template ? (TEMPLATE_MAP[template] || 'sli') : 'sli';
 
         const job = await addJob('GENERATE_PDF', {
             data: req.doc, // Passing full doc data (parsed in middleware? No, req.doc is raw Prisma obj)
@@ -211,7 +221,8 @@ router.post('/:id/export', [
         res.status(202).json({
             message: 'Export started',
             jobId: job.id,
-            statusUrl: `/jobs/${job.id}`
+            statusUrl: `/jobs/${job.id}`,
+            url: `/jobs/${job.id}` // Backward compat if needed?
         });
     } catch (error) {
         console.error('Export error:', error);

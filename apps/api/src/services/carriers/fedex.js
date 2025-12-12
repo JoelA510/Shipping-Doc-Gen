@@ -1,10 +1,11 @@
 const CarrierAdapter = require('./base');
+const config = require('../../config');
 
 class FedExAdapter extends CarrierAdapter {
     constructor(credentials, accountNumber) {
         super(credentials);
         this.accountNumber = accountNumber;
-        this.baseUrl = process.env.FEDEX_API_URL || 'https://apis-sandbox.fedex.com';
+        this.baseUrl = config.carriers.fedexUrl;
     }
 
     async getRates(shipment) {

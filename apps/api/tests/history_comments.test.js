@@ -1,12 +1,17 @@
-// Mock env validation
-jest.mock('../src/config/env', () => ({
-    validateEnv: () => ({
-        port: 3003,
-        storagePath: '/tmp/storage',
-        authSecret: 'test-secret',
-        redis: { host: 'localhost', port: 6379 },
-        nodeEnv: 'test'
-    })
+// Mock confg
+jest.mock('../src/config', () => ({
+    port: 3003,
+    storage: { path: '/tmp/storage' },
+    authSecret: 'test-secret',
+    redis: { host: 'localhost', port: 6379 },
+    email: { host: 'smtp.test' },
+    carriers: { fedexUrl: 'http://fedex' },
+    nodeEnv: 'test'
+}));
+
+// Mock Redis Service
+jest.mock('../src/services/redis', () => ({
+    connection: { on: jest.fn() }
 }));
 
 // Mock nodemailer
@@ -100,6 +105,9 @@ jest.mock('../src/services/storage', () => ({
     getFilePath: jest.fn().mockReturnValue('/tmp/mock-file')
 }));
 
+// Mock db to use queue.prisma
+jest.mock('../src/db', () => require('../src/queue').prisma);
+
 describe('Document History and Comments', () => {
     let token;
     let docId = 'test-doc-id';
@@ -112,6 +120,11 @@ describe('Document History and Comments', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
+        // Setup default doc for ownership checks
+        mockPrisma.document.findUnique.mockResolvedValue({
+            id: docId,
+            userId: 'user-id'
+        });
     });
 
     it('should add a comment to a document', async () => {

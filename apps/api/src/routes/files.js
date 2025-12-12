@@ -1,12 +1,11 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
-const { validateEnv } = require('../config/env');
+const config = require('../config');
 
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const router = express.Router();
-const config = validateEnv();
 
 router.get('/:filename', async (req, res) => {
     const { filename } = req.params;
@@ -58,7 +57,7 @@ router.get('/:filename', async (req, res) => {
             return res.status(404).json({ error: 'File not found or access denied' });
         }
 
-        const filePath = path.join(config.storagePath, filename);
+        const filePath = path.join(config.storage.path, filename);
 
         if (!fs.existsSync(filePath)) {
             return res.status(404).json({ error: 'File not found' });

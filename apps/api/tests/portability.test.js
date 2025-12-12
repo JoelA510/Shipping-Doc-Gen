@@ -1,5 +1,22 @@
 const request = require('supertest');
 const { shipments } = require('./fixtures/shipments');
+const config = require('../src/config'); // Ensure config is loaded if needed, but strictly we should mock it
+
+jest.mock('../src/config', () => ({
+    port: 3006,
+    storage: { path: '/tmp/storage' },
+    authSecret: 'test-secret',
+    redis: { host: 'localhost', port: 6379 },
+    email: { host: 'smtp.test' },
+    carriers: { fedexUrl: 'http://fedex' },
+    nodeEnv: 'test'
+}));
+
+jest.mock('nodemailer', () => ({
+    createTransporter: jest.fn().mockReturnValue({
+        sendMail: jest.fn().mockResolvedValue(true)
+    })
+}));
 
 // Mock Prisma Client
 const mockPrisma = {
@@ -101,6 +118,7 @@ describe('Portability API', () => {
         it('should import a valid shipment payload', async () => {
             const importPayload = {
                 version: '1.0',
+                type: 'SHIPMENT_EXPORT',
                 timestamp: new Date().toISOString(),
                 exportSource: 'shipping-doc-gen',
                 data: {

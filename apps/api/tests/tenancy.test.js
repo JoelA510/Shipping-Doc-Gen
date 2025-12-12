@@ -43,18 +43,11 @@ jest.mock('@prisma/client', () => ({
 // 2. Mock Config/Env
 jest.mock('../src/config', () => ({
     authSecret: 'test-secret',
-    nodeEnv: 'test'
-}));
-
-jest.mock('../src/config/env', () => ({
-    validateEnv: jest.fn().mockReturnValue({
-        storagePath: '/tmp/storage',
-        authSecret: 'test-secret',
-        port: 3001,
-        redis: { host: 'localhost', port: 6379 },
-        smtp: { host: 'smtp.test', port: 587, user: 'test', pass: 'test' },
-        s3: { bucket: 'test-bucket' }
-    })
+    nodeEnv: 'test',
+    storage: { path: '/tmp/storage', s3: { bucket: 'test-bucket' } },
+    port: 3001,
+    redis: { host: 'localhost', port: 6379 },
+    email: { host: 'smtp.test', port: 587, user: 'test', pass: 'test' }
 }));
 
 // 3. Mock Services

@@ -40,6 +40,13 @@ jest.mock('@prisma/client', () => {
 });
 
 // Import route AFTER mocks
+// Mock User Middleware
+app.use((req, res, next) => {
+    req.user = { id: 'user-123' };
+    next();
+});
+
+// Import route AFTER mocks
 const carriersRouter = require('../src/routes/carriers');
 app.use('/shipments', carriersRouter);
 
@@ -50,6 +57,7 @@ describe('Carrier Rate Caching', () => {
         // Setup default mocks
         mockPrisma.shipment.findUnique.mockResolvedValue({
             id: 'ship-123',
+            createdByUserId: 'user-123',
             originCountry: 'US',
             destinationCountry: 'CA',
             totalWeightKg: 10,
@@ -57,7 +65,7 @@ describe('Carrier Rate Caching', () => {
         });
 
         mockPrisma.carrierAccount.findMany.mockResolvedValue([
-            { id: 'acct-1', isActive: true }
+            { id: 'acct-1', isActive: true, userId: 'user-123' }
         ]);
 
         getCarrierGateway.mockResolvedValue({

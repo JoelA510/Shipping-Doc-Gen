@@ -1,8 +1,10 @@
 const Redis = require('ioredis');
 
+const config = require('../config');
+
 // Shared Redis connection
 // Using lazy initialization or simple global singleton pattern
-const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+const redisUrl = config.redis.url || `redis://${config.redis.host}:${config.redis.port}`;
 
 const connection = new Redis(redisUrl, {
     maxRetriesPerRequest: null,

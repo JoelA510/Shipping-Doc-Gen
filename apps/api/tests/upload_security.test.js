@@ -8,12 +8,13 @@ jest.mock('nodemailer', () => ({
     })
 }));
 
-jest.mock('../src/config/env', () => ({
-    validateEnv: jest.fn(),
-    config: {
-        env: 'test',
-        port: 3000
-    }
+jest.mock('../src/config', () => ({
+    port: 3000,
+    nodeEnv: 'test',
+    storage: { path: '/tmp/mock' },
+    redis: { host: 'localhost', port: 6379 },
+    email: { host: 'smtp.test' },
+    carriers: { fedexUrl: 'http://fedex' }
 }));
 
 // Mock dependencies

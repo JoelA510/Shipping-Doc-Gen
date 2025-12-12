@@ -20,10 +20,18 @@ jest.mock('@prisma/client', () => {
     };
 });
 
-jest.mock('../src/config/env', () => ({
-    validateEnv: () => ({
-        storagePath: require('path').resolve('/tmp/storage')
-    })
+jest.mock('../src/config', () => ({
+    storage: { path: require('path').resolve('/tmp/storage') },
+    port: 3000,
+    redis: { host: 'localhost', port: 6379 },
+    email: { host: 'smtp.test' },
+    carriers: { fedexUrl: 'http://fedex' },
+    nodeEnv: 'test'
+}));
+
+// Mock Redis Service
+jest.mock('../src/services/redis', () => ({
+    connection: { on: jest.fn() }
 }));
 
 // Mock fs

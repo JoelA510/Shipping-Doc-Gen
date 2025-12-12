@@ -2,9 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
-const { validateEnv } = require('../config/env');
-
-const config = validateEnv();
+const config = require('../config');
 
 // Storage Provider Interface
 class StorageProvider {
@@ -16,8 +14,8 @@ class StorageProvider {
 class LocalProvider extends StorageProvider {
     constructor() {
         super();
-        if (!fs.existsSync(config.storagePath)) {
-            fs.mkdirSync(config.storagePath, { recursive: true });
+        if (!fs.existsSync(config.storage.path)) {
+            fs.mkdirSync(config.storage.path, { recursive: true });
         }
     }
 
@@ -25,7 +23,7 @@ class LocalProvider extends StorageProvider {
         const fileId = uuidv4();
         const ext = path.extname(originalName);
         const filename = `${fileId}${ext}`;
-        const filePath = path.join(config.storagePath, filename);
+        const filePath = path.join(config.storage.path, filename);
 
         await fs.promises.writeFile(filePath, buffer);
 
@@ -37,7 +35,7 @@ class LocalProvider extends StorageProvider {
     }
 
     getFilePath(filename) {
-        return path.join(config.storagePath, filename);
+        return path.join(config.storage.path, filename);
     }
 }
 
@@ -46,14 +44,14 @@ class S3Provider extends StorageProvider {
     constructor() {
         super();
         this.client = new S3Client({
-            region: process.env.AWS_REGION || 'us-east-1',
+            region: config.storage.s3.region,
             credentials: {
-                accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-                secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+                accessKeyId: config.storage.s3.accessKeyId,
+                secretAccessKey: config.storage.s3.secretAccessKey
             },
-            endpoint: process.env.S3_ENDPOINT // Optional: for R2/MinIO
+            endpoint: config.storage.s3.endpoint
         });
-        this.bucket = process.env.S3_BUCKET_NAME;
+        this.bucket = config.storage.s3.bucket;
     }
 
     async saveFile(buffer, originalName, mimeType) {
@@ -70,8 +68,8 @@ class S3Provider extends StorageProvider {
         }));
 
         // If using Cloudflare R2 or public S3 bucket
-        const publicUrl = process.env.S3_PUBLIC_URL
-            ? `${process.env.S3_PUBLIC_URL}/${filename}`
+        const publicUrl = config.storage.s3.publicUrl
+            ? `${config.storage.s3.publicUrl}/${filename}`
             : `https://${this.bucket}.s3.amazonaws.com/${filename}`;
 
         return {
@@ -91,7 +89,7 @@ class S3Provider extends StorageProvider {
 }
 
 // Factory
-const provider = process.env.STORAGE_PROVIDER === 's3'
+const provider = config.storage.provider === 's3'
     ? new S3Provider()
     : new LocalProvider();
 

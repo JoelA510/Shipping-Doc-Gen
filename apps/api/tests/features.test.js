@@ -1,12 +1,12 @@
-// Mock env validation
-jest.mock('../src/config/env', () => ({
-    validateEnv: () => ({
-        port: 3003,
-        storagePath: '/tmp/storage',
-        authSecret: 'test-secret',
-        redis: { host: 'localhost', port: 6379 },
-        nodeEnv: 'test'
-    })
+// Mock config
+jest.mock('../src/config', () => ({
+    port: 3003,
+    storage: { path: '/tmp/storage' },
+    authSecret: 'test-secret',
+    redis: { host: 'localhost', port: 6379 },
+    email: { host: 'smtp.test', port: 587, user: 'test', pass: 'test' },
+    carriers: { fedexUrl: 'http://fedex', upsUrl: 'http://ups' },
+    nodeEnv: 'test'
 }));
 
 // Mock nodemailer
@@ -22,6 +22,15 @@ jest.mock('../src/services/auth', () => ({
     login: jest.fn().mockResolvedValue({ user: { id: 'user-id', username: 'testuser' }, token: 'valid-token' }),
     verifyToken: jest.fn().mockReturnValue({ id: 'user-id', username: 'testuser' }),
     prisma: {}
+}));
+
+// Mock Redis Service
+jest.mock('../src/services/redis', () => ({
+    connection: {
+        get: jest.fn(),
+        setex: jest.fn(),
+        on: jest.fn()
+    }
 }));
 
 // Mock queue and prisma
@@ -59,6 +68,8 @@ jest.mock('../src/queue', () => {
         prisma: mockPrisma
     };
 });
+
+jest.mock('../src/db', () => require('../src/queue').prisma);
 
 const request = require('supertest');
 const app = require('../src/index');

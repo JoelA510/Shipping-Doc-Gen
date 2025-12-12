@@ -1,12 +1,16 @@
-// Mock env
-jest.mock('../src/config/env', () => ({
-    validateEnv: () => ({
-        port: 3005,
-        storagePath: '/tmp/storage',
-        authSecret: 'test-secret',
-        redis: { host: 'localhost', port: 6379 },
-        nodeEnv: 'test'
-    })
+jest.mock('../src/config', () => ({
+    port: 3005,
+    storage: { path: '/tmp/storage' },
+    authSecret: 'test-secret',
+    redis: { host: 'localhost', port: 6379 },
+    email: { host: 'smtp.test' },
+    carriers: { fedexUrl: 'http://fedex' },
+    nodeEnv: 'test'
+}));
+
+// Mock Redis Service
+jest.mock('../src/services/redis', () => ({
+    connection: { on: jest.fn() }
 }));
 
 jest.mock('nodemailer', () => ({
