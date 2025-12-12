@@ -181,6 +181,14 @@ export const api = {
         return request(`/shipments/${id}`);
     },
 
+    updateShipment: async (id, data) => {
+        return request(`/shipments/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+    },
+
     getValidation: async (id) => {
         const res = await request(`/shipments/${id}/validation`);
         // Ensure we return the issues array or Summary object structure expected

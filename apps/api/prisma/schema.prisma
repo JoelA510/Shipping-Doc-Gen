@@ -288,8 +288,11 @@ model Shipment {
   sanctionsChecks  SanctionsCheckResult[]
 
 
+  assignedTo      String?
+  dueDate         DateTime?
+
   // Metadata
-  status            String   @default("draft") // draft, imported, validated, booked, completed
+  status            String   @default("draft") // draft, ready_to_book, booked, in_transit, exception, closed
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 

@@ -16,7 +16,13 @@ router.get('/', async (req, res) => {
         const limit = parseInt(req.query.limit) || 20;
         const skip = (page - 1) * limit;
 
+        const where = {};
+        if (req.query.status) {
+            where.status = req.query.status;
+        }
+
         const shipments = await prisma.shipment.findMany({
+            where,
             skip,
             take: limit,
             orderBy: { createdAt: 'desc' },
@@ -87,6 +93,9 @@ router.post('/', async (req, res) => {
             numPackages,
             originCountry,
             destinationCountry,
+            assignedTo,
+            dueDate,
+            status
         } = req.body;
 
         // Validation for required fields (can be enhanced with Zod later)
@@ -117,6 +126,11 @@ router.post('/', async (req, res) => {
                 originCountry: originCountry || 'US',
                 destinationCountry,
                 createdByUserId: userId,
+                // Lifecycle
+                status: status || 'draft',
+                assignedTo: assignedTo || userId,
+                dueDate: dueDate ? new Date(dueDate) : null,
+
                 // Snapshots
                 shipperSnapshot,
                 consigneeSnapshot,
@@ -151,7 +165,9 @@ router.put('/:id', async (req, res) => {
             numPackages,
             originCountry,
             destinationCountry,
-            status
+            status,
+            assignedTo,
+            dueDate
         } = req.body;
 
         // Fetch current to see if parties changed
@@ -166,7 +182,9 @@ router.put('/:id', async (req, res) => {
             numPackages,
             originCountry,
             destinationCountry,
-            status
+            status,
+            assignedTo,
+            dueDate: dueDate ? new Date(dueDate) : undefined
         };
 
         // Handle Party Changes (re-snapshot)

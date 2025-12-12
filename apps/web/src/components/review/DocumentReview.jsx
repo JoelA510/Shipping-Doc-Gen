@@ -11,7 +11,7 @@ import AesPanel from './AesPanel';
 import SanctionsPanel from './SanctionsPanel';
 import FeatureGuard from '../common/FeatureGuard';
 
-export default function DocumentReview({ document, onBack, user, onGenerate }) {
+export default function DocumentReview({ document, onBack, user, onGenerate, onSave: customSave }) {
     const [doc, setDoc] = useState(document);
     const [isEditing, setIsEditing] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
@@ -91,10 +91,11 @@ export default function DocumentReview({ document, onBack, user, onGenerate }) {
         setIsSaving(true);
         setMessage(null);
         try {
-            // If it's a shipment, we might need a different API, but usually updateDocument 
-            // maps effectively or we assume the API handles it.
-            // For now, using updateDocument as legacy.
-            await api.updateDocument(doc.id, doc);
+            if (customSave) {
+                await customSave(doc);
+            } else {
+                await api.updateDocument(doc.id, doc);
+            }
             setIsEditing(false);
             setMessage({ type: 'success', text: 'Changes saved successfully' });
         } catch (err) {
