@@ -16,7 +16,8 @@ function validateEnv() {
             host: process.env.REDIS_HOST,
             port: parseInt(process.env.REDIS_PORT, 10)
         },
-        nodeEnv: process.env.NODE_ENV || 'development'
+        nodeEnv: process.env.NODE_ENV || 'development',
+        frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173'
     };
 }
 

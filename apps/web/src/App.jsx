@@ -185,8 +185,10 @@ function AppContent() {
                 } />
 
                 <Route path="/shipments/new" element={
-                    <ProtectedRoute>
-                        <DocumentReviewPage />
+                    <ProtectedRoute user={user} loading={loading}>
+                        <Layout user={user} onLogout={handleLogout}>
+                            <DocumentReviewPage />
+                        </Layout>
                     </ProtectedRoute>
                 } />
 

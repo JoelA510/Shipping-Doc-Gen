@@ -21,7 +21,7 @@ class LocalProvider extends StorageProvider {
         }
     }
 
-    async saveFile(buffer, originalName) {
+    async saveFile(buffer, originalName, mimeType) {
         const fileId = uuidv4();
         const ext = path.extname(originalName);
         const filename = `${fileId}${ext}`;
@@ -56,7 +56,7 @@ class S3Provider extends StorageProvider {
         this.bucket = process.env.S3_BUCKET_NAME;
     }
 
-    async saveFile(buffer, originalName) {
+    async saveFile(buffer, originalName, mimeType) {
         const fileId = uuidv4();
         const ext = path.extname(originalName);
         const filename = `${fileId}${ext}`;
@@ -65,7 +65,8 @@ class S3Provider extends StorageProvider {
             Bucket: this.bucket,
             Key: filename,
             Body: buffer,
-            ContentType: 'application/octet-stream' // Should ideally detect mime type
+            ContentType: mimeType || 'application/octet-stream',
+            ServerSideEncryption: 'AES256'
         }));
 
         // If using Cloudflare R2 or public S3 bucket
@@ -95,6 +96,6 @@ const provider = process.env.STORAGE_PROVIDER === 's3'
     : new LocalProvider();
 
 module.exports = {
-    saveFile: (buffer, name) => provider.saveFile(buffer, name),
+    saveFile: (buffer, name, mimeType) => provider.saveFile(buffer, name, mimeType),
     getFilePath: (filename) => provider.getFilePath(filename)
 };

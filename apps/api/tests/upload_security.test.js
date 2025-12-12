@@ -29,10 +29,12 @@ jest.mock('../src/services/storage', () => ({
 }));
 
 jest.mock('../src/queue', () => ({
-    createJob: jest.fn().mockResolvedValue({ id: 'job-123' })
+    addJob: jest.fn().mockResolvedValue({ id: 'job-123' }),
+    connection: { quit: jest.fn() }
 }));
 
-jest.mock('yauzl');
+jest.mock('adm-zip');
+const AdmZip = require('adm-zip');
 
 // Import app AFTER mocking
 const app = require('../src/index');
@@ -52,7 +54,7 @@ describe('POST /upload Security Tests', () => {
             .attach('file', pdfBuffer, { filename: 'test.pdf', contentType: 'application/pdf' });
 
         expect(res.status).toBe(202);
-        expect(res.body.message).toMatch(/Enqueued 1 document/);
+        expect(res.body.message).toMatch(/File upload accepted/);
     });
 
     it('should reject a fake PDF (signature mismatch)', async () => {
@@ -79,22 +81,14 @@ describe('POST /upload Security Tests', () => {
     });
 
     it('should reject a ZIP entry with Zip Slip paths', async () => {
-        // Mock yauzl behavior for this test
-        const mockZipFile = new EventEmitter();
-        mockZipFile.readEntry = jest.fn();
-        mockZipFile.openReadStream = jest.fn();
+        // Mock AdmZip to return malicious entry
+        AdmZip.mockImplementation(() => ({
+            getEntries: jest.fn().mockReturnValue([
+                { entryName: '../../etc/passwd', header: { size: 100 } }
+            ])
+        }));
 
-        yauzl.fromBuffer.mockImplementation((buffer, options, callback) => {
-            callback(null, mockZipFile);
-            // Simulate reading an entry
-            process.nextTick(() => {
-                mockZipFile.emit('entry', { fileName: '../../etc/passwd' });
-            });
-        });
-
-        // We need a buffer that looks like a zip signature-wise, 
-        // otherwise validateFileSignature will fail before yauzl is called.
-        // PK\x03\x04 is zip signature
+        // Valid zip signature to pass validateFileSignature
         const zipBuffer = Buffer.from([0x50, 0x4B, 0x03, 0x04, 0x00]);
 
         const res = await request(app)
@@ -106,35 +100,12 @@ describe('POST /upload Security Tests', () => {
     });
 
     it('should process a valid ZIP file', async () => {
-        // Mock yauzl behavior for valid zip
-        const mockZipFile = new EventEmitter();
-        mockZipFile.readEntry = jest.fn();
-        mockZipFile.openReadStream = jest.fn((entry, cb) => {
-            const stream = new EventEmitter(); // mock read stream
-            cb(null, stream);
-            process.nextTick(() => {
-                stream.emit('data', Buffer.from('content'));
-                stream.emit('end');
-            });
-        });
-
-        yauzl.fromBuffer.mockImplementation((buffer, options, callback) => {
-            callback(null, mockZipFile);
-
-            // Emit one valid entry then end
-            process.nextTick(() => {
-                mockZipFile.emit('entry', { fileName: 'safe.txt' });
-                // We need to trigger "end" after the entry is processed.
-                // In the real code, we call readEntry() again.
-                // But tests update the mocks before readEntry is called? No.
-                // Simplified: The code calls readEntry(). We don't need to simulate the loop perfectly 
-                // just that it passed the first one.
-                // Actually, the code waits for 'end' on zipfile.
-                setTimeout(() => {
-                    mockZipFile.emit('end');
-                }, 50);
-            });
-        });
+        // Mock AdmZip to return valid entries
+        AdmZip.mockImplementation(() => ({
+            getEntries: jest.fn().mockReturnValue([
+                { entryName: 'safe.txt', header: { size: 100 } }
+            ])
+        }));
 
         const zipBuffer = Buffer.from([0x50, 0x4B, 0x03, 0x04, 0x00]);
 

@@ -29,7 +29,7 @@ const app = express();
 // Security middleware
 app.use(helmet());
 app.use(cors({
-    origin: true, // Reflect request origin to support credentials
+    origin: config.frontendUrl, // Restrict to trusted frontend
     credentials: true
 }));
 app.use(express.json({ limit: '10mb' })); // Limit payload size
@@ -50,7 +50,7 @@ const authLimiter = rateLimit({
     skipSuccessfulRequests: true
 });
 
-app.use('/api/', limiter); // Apply to all API routes
+app.use(limiter); // Apply to all routes
 app.use('/auth', authLimiter); // Stricter limit for auth
 
 // Public health check
