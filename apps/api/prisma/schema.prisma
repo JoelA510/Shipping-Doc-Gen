@@ -355,6 +355,11 @@ model Shipment {
   
   carrierMeta       ShipmentCarrierMeta?
 
+  // Phase 13 Relations
+  spotQuotes      SpotQuote[]
+  dockAppointment DockAppointment?
+  sensorReadings  SensorReading[]
+
   @@index([sourceDocumentId])
   @@index([createdByUserId])
   @@index([status])
@@ -428,6 +433,10 @@ model Party {
   shipmentsAsConsignee  Shipment[] @relation("ShipmentConsignee")
   shipmentsAsForwarder  Shipment[] @relation("ShipmentForwarder")
   shipmentsAsBroker     Shipment[] @relation("ShipmentBroker")
+  // Phase 13: Credit Risk
+  creditLimit     Float?
+  currentBalance  Float?
+  creditRating    String?
 
   @@index([createdByUserId])
 }
@@ -752,4 +761,52 @@ model YardEntry {
   
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+// Phase 13
+model DockAppointment {
+  id            String   @id @default(uuid())
+  startTime     DateTime
+  endTime       DateTime
+  doorId        String
+  carrierName   String?
+  status        String   // SCHEDULED, ARRIVED, COMPLETED, CANCELLED
+  
+  shipmentId    String?  @unique
+  shipment      Shipment? @relation(fields: [shipmentId], references: [id])
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model SpotQuote {
+  id            String   @id @default(uuid())
+  shipmentId    String
+  carrierName   String
+  amount        Float
+  currency      String
+  validUntil    DateTime?
+  source        String   // EMAIL, MANUAL, API
+  status        String   // PENDING, ACCEPTED, REJECTED
+  
+  shipment      Shipment @relation(fields: [shipmentId], references: [id])
+  
+  createdAt     DateTime @default(now())
+}
+
+model SensorReading {
+  id            String   @id @default(uuid())
+  shipmentId    String
+  deviceId      String
+  timestamp     DateTime
+  temperature   Float?
+  humidity      Float?
+  battery       Float?
+  location      String? // JSON lat/lng
+  
+  shipment      Shipment @relation(fields: [shipmentId], references: [id])
+  
+  createdAt     DateTime @default(now())
+  
+  @@index([shipmentId])
 }
