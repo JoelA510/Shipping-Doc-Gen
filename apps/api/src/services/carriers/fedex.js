@@ -68,6 +68,14 @@ class FedExAdapter extends CarrierAdapter {
             status: 'accepted'
         };
     }
+
+    static getCredentialSchema() {
+        return [
+            { key: 'clientId', label: 'Client ID', type: 'text', required: true },
+            { key: 'clientSecret', label: 'Client Secret', type: 'password', required: true },
+            { key: 'accountNumber', label: 'Account Number', type: 'text', required: true }
+        ];
+    }
 }
 
 module.exports = FedExAdapter;

@@ -87,6 +87,7 @@ app.use('/items', requireAuth, require('./routes/items'));
 app.use('/shipment-templates', requireAuth, require('./routes/shipmentTemplates'));
 app.use('/shipments', requireAuth, shipmentsRouter);
 app.use('/import', requireAuth, importRouter);
+app.use('/fleet', requireAuth, require('./routes/fleet'));
 app.use('/', requireAuth, statusRouter);
 
 // 404 handler

@@ -3,6 +3,7 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { getCarrierGateway } = require('../services/carriers/carrierGateway');
+const CarrierFactory = require('../services/carriers/carrierFactory');
 const { generateDocument } = require('../services/documents/generator');
 
 /**
@@ -87,6 +88,78 @@ router.post('/rates', async (req, res) => {
         logger.error('Ad-hoc rate shop failed', { error: error.message });
         res.status(500).json({ error: 'Failed to shop rates' });
     }
+});
+
+/**
+ * GET /api/carriers/schema/:provider
+ * Returns the form schema for connecting a carrier.
+ */
+router.get('/schema/:provider', (req, res) => {
+    const { provider } = req.params;
+    const schema = CarrierFactory.getProviderSchema(provider);
+    res.json(schema);
+});
+
+/**
+ * POST /api/carriers/connect
+ * Connects a new carrier account after validation.
+ */
+router.post('/connect', async (req, res) => {
+    const { provider, credentials, accountNumber, description, userId } = req.body;
+
+    try {
+        // 1. Validate Credentials against Carrier API
+        const isValid = await CarrierFactory.validateCredentials(provider, credentials, accountNumber);
+
+        if (!isValid) {
+            return res.status(400).json({ error: 'Invalid credentials. Carrier rejected the connection.' });
+        }
+
+        // 2. Save Account
+        const account = await prisma.carrierAccount.create({
+            data: {
+                userId: userId || req.user?.id,
+                provider: provider.toLowerCase(),
+                accountNumber,
+                credentials: JSON.stringify(credentials),
+                description,
+                isActive: true
+            }
+        });
+
+        logger.info(`Carrier account connected: ${provider} (${account.id})`);
+        res.json(account);
+
+    } catch (error) {
+        logger.error(`Connection error: ${error.message}`);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * GET /api/carriers
+ * List connected accounts for user.
+ */
+router.get('/', async (req, res) => {
+    const userId = req.user?.id || req.query.userId;
+    if (!userId) {
+        return res.status(400).json({ error: 'Missing userId' });
+    }
+
+    const accounts = await prisma.carrierAccount.findMany({
+        where: { userId }
+    });
+
+    // Don't return full credentials
+    const sanitized = accounts.map(a => ({
+        id: a.id,
+        provider: a.provider,
+        description: a.description,
+        accountNumber: a.accountNumber,
+        isActive: a.isActive
+    }));
+
+    res.json(sanitized);
 });
 
 router.post('/:id/rates', async (req, res) => {

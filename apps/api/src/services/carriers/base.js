@@ -81,6 +81,14 @@ class CarrierAdapter {
     async validateAddress(address) {
         throw new Error('validateAddress not implemented');
     }
+
+    /**
+     * Get the JSON schema for credentials required by this carrier.
+     * Used by the frontend to render the connection form.
+     */
+    static getCredentialSchema() {
+        return [];
+    }
 }
 
 module.exports = CarrierAdapter;
