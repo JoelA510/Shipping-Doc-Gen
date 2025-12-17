@@ -340,24 +340,73 @@ async function parsePdf(buffer) {
 
   // OCR / Safety Net
   if (rawDoc.lines.length === 0) {
+    console.log('[Parser] Text extraction failed or empty. Attempting OCR...');
+
+    // Try local Tesseract first (if image buffer or via plugin)
+    // Note: Tesseract.js standard worker expects images. If we have a PDF buffer map, we need conversion.
+    // For this environment, we will assume we might have an image buffer passed mistakenly as PDF, 
+    // or we fallback to external service which returns hOCR.
+
     const ocrUrl = process.env.OCR_SERVICE_URL || 'http://ocr:5000';
     try {
       const formData = new FormData();
       const blob = new Blob([buffer], { type: 'application/pdf' });
       formData.append('file', blob, 'document.pdf');
-      const response = await fetch(`${ocrUrl}/extract`, { method: 'POST', body: formData });
+
+      // Request hOCR output
+      const response = await fetch(`${ocrUrl}/extract?format=hocr`, { method: 'POST', body: formData });
+
       if (response.ok) {
         const data = await response.json();
-        if (data.text) {
+
+        if (data.hocr) {
+          const { parseHocr } = require('./hocrParser');
+          const hocrResult = parseHocr(data.hocr);
+          text = hocrResult.text;
+
+          // Re-parse with the OCR text
+          rawDoc = {
+            header: parseHeader(text),
+            lines: parseLines(text),
+            meta: { ...meta, ocrUsed: true, ocrEngine: 'hocr-external' }
+          };
+        } else if (data.text) {
           text = data.text;
           rawDoc = {
             header: parseHeader(text),
             lines: parseLines(text),
-            meta: { ...meta, ocrUsed: true }
+            meta: { ...meta, ocrUsed: true, ocrEngine: 'text-external' }
           };
         }
       }
-    } catch (e) { }
+    } catch (e) {
+      console.warn('External OCR failed, trying local fallback...', e);
+    }
+
+    // Local Tesseract.js fallback for raw images (if buffer is actually image)
+    // or if we add PDF-to-Image lib later.
+    try {
+      const Tesseract = require('tesseract.js');
+      // Simple heuristic: if header starts with general image/pdf signature
+      // We just try to recognize it. Tesseract.js handles some formats.
+      const worker = await Tesseract.createWorker('eng');
+      const ret = await worker.recognize(buffer, { rotateAuto: true }, { hocr: true });
+      await worker.terminate();
+
+      if (ret.data.hocr) {
+        const { parseHocr } = require('./hocrParser');
+        const hocrResult = parseHocr(ret.data.hocr);
+        text = hocrResult.text;
+
+        rawDoc = {
+          header: parseHeader(text),
+          lines: parseLines(text),
+          meta: { ...meta, ocrUsed: true, ocrEngine: 'tesseract.js-local' }
+        };
+      }
+    } catch (err) {
+      console.warn('Local OCR failed', err);
+    }
   }
 
   if (rawDoc.lines.length === 0) {

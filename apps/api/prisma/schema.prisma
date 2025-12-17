@@ -48,6 +48,10 @@ model Document {
   updatedAt  DateTime @updatedAt
   userId     String?
   user       User?    @relation(fields: [userId], references: [id])
+  
+  tags       String?  // JSON string (e.g. ["Invoice", "Urgent"])
+  
+  versions   DocumentVersion[]
 
   comments      Comment[]
   auditLogs     AuditLog[]
@@ -138,10 +142,13 @@ model CarrierAccount {
   credentials   String   // JSON (Encrypted API Keys/Secrets)
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
+  
+  shipments     Shipment[]
+  manifests     Manifest[]
   updatedAt     DateTime @updatedAt
   
   user User @relation(fields: [userId], references: [id])
-  shipments Shipment[]
+
 
   @@index([userId])
 }
@@ -319,6 +326,13 @@ model Shipment {
   documents         ShipmentDocument[]
   auditLogs         AuditLog[]
   comments          Comment[]
+
+  // Phase 4: Logistics
+  packages          Package[]
+  manifestId        String?
+  manifest          Manifest? @relation(fields: [manifestId], references: [id])
+  isReturn          Boolean   @default(false)
+  stopOrder         Int?
 
   // Snapshots (Phase 2)
   shipperSnapshot   String? // JSON
@@ -544,4 +558,56 @@ model ServiceZone {
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+model DocumentVersion {
+  id          String   @id @default(uuid())
+  documentId  String
+  version     Int
+  
+  // Snapshot of data
+  header      String?
+  lines       String?
+  
+  createdAt   DateTime @default(now())
+  createdByUserId String?
+
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  
+  @@index([documentId])
+}
+
+model Package {
+  id              String   @id @default(uuid())
+  shipmentId      String
+  trackingNumber  String? // Child tracking number
+  weightKg        Float
+  dimLength       Float?
+  dimWidth        Float?
+  dimHeight       Float?
+  dimUnit         String?  // cm, in
+  type            String?  // box, pallet, envelope
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  shipment        Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  
+  @@index([shipmentId])
+}
+
+model Manifest {
+  id                String   @id @default(uuid())
+  carrierAccountId  String
+  submissionId      String?  // Carrier's ID
+  documentUrl       String?  // PDF link
+  status            String   @default("pending") // pending, closed, error
+  
+  createdAt         DateTime @default(now())
+  closedAt          DateTime?
+  
+  shipments         Shipment[]
+  carrierAccount    CarrierAccount @relation(fields: [carrierAccountId], references: [id])
+  
+  @@index([carrierAccountId])
 }
