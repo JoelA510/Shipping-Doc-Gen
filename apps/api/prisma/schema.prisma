@@ -59,14 +59,17 @@ model Comment {
   id         String   @id @default(uuid())
   text       String
   userId     String
-  documentId String
+  documentId String?
+  shipmentId String?
   createdAt  DateTime @default(now())
 
-  user     User     @relation(fields: [userId], references: [id])
-  document Document @relation(fields: [documentId], references: [id])
+  user     User      @relation(fields: [userId], references: [id])
+  document Document? @relation(fields: [documentId], references: [id])
+  shipment Shipment? @relation(fields: [shipmentId], references: [id])
 
   @@index([userId])
   @@index([documentId])
+  @@index([shipmentId])
 }
 
 model AuditLog {
@@ -295,6 +298,10 @@ model Shipment {
 
 
   assignedTo      String?
+
+  // Phase 2: Driver Assignment
+  driverId          String?
+  driver            Driver?   @relation(fields: [driverId], references: [id])
   dueDate         DateTime?
 
   // Metadata
@@ -311,6 +318,7 @@ model Shipment {
   lineItems         ShipmentLineItem[]
   documents         ShipmentDocument[]
   auditLogs         AuditLog[]
+  comments          Comment[]
 
   // Snapshots (Phase 2)
   shipperSnapshot   String? // JSON
@@ -377,6 +385,9 @@ model Party {
   stateOrProvince String?
   postalCode      String
   countryCode     String
+
+  lat             Float?
+  lng             Float?
 
   contactName     String?
   phone           String?
@@ -476,4 +487,61 @@ model ShipmentTemplate {
   updatedAt       DateTime @updatedAt
 
   @@index([createdByUserId])
+}
+
+model Driver {
+  id              String   @id @default(uuid())
+  name            String
+  type            String   @default("employee") // employee, contractor
+  licenseNumber   String?
+  phone           String?
+  email           String?
+  avatar          String?
+  
+  status          String   @default("active") // active, inactive, on_duty
+  
+  currentLat      Float?
+  currentLng      Float?
+  lastLocationAt  DateTime?
+
+  vehicleId       String?
+  vehicle         Vehicle? @relation(fields: [vehicleId], references: [id])
+  
+  shipments       Shipment[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Vehicle {
+  id              String   @id @default(uuid())
+  name            String
+  licensePlate    String
+  make            String?
+  model           String?
+  type            String   // truck, van, trailer
+  capacityKg      Float?
+  
+  status          String   @default("active")
+  
+  drivers         Driver[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ServiceZone {
+  id              String   @id @default(uuid())
+  name            String
+  description     String?
+  type            String   // polygon, radius
+  
+  // Storing geometry as JSON (GeoJSON style)
+  // { type: "Polygon", coordinates: [...] }
+  geometry        String   
+  
+  rules           String?  // JSON rules for validation
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }

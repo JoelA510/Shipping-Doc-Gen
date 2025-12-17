@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, Link 
 import { AnimatePresence, motion } from 'framer-motion';
 import { LogOut, Ship, Users, FileSpreadsheet, Package, BarChart3 } from 'lucide-react';
 import ReportsPage from './components/reports/ReportsPage';
+import KanbanBoard from './components/kanban/KanbanBoard';
+import FleetMap from './components/map/FleetMap'; // Phase 2b
 
 import DocumentReviewPage from './components/review/DocumentReviewPage';
 import ShipmentReviewPage from './components/review/ShipmentReviewPage';
@@ -304,6 +306,34 @@ function AppContent() {
                                 transition={{ duration: 0.3 }}
                             >
                                 <ErpExportDashboard />
+                            </motion.div>
+                        </Layout>
+                    </ProtectedRoute>
+                } />
+                <Route path="/kanban" element={
+                    <ProtectedRoute user={user} loading={loading}>
+                        <Layout user={user} onLogout={handleLogout}>
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -20 }}
+                                transition={{ duration: 0.3 }}
+                            >
+                                <KanbanBoard />
+                            </motion.div>
+                        </Layout>
+                    </ProtectedRoute>
+                } />
+                <Route path="/map" element={
+                    <ProtectedRoute user={user} loading={loading}>
+                        <Layout user={user} onLogout={handleLogout}>
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.5 }}
+                            >
+                                <FleetMap />
                             </motion.div>
                         </Layout>
                     </ProtectedRoute>

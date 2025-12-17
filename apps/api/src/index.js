@@ -21,10 +21,15 @@ const forwardersRouter = require('./routes/forwarders');
 const erpRouter = require('./routes/erp');
 const configRouter = require('./routes/config');
 
-
+const http = require('http');
+const { initSocket } = require('./services/socket');
 
 const port = config.port;
 const app = express();
+const server = http.createServer(app);
+
+// Initialize Socket.io
+initSocket(server);
 
 // Security middleware
 app.use(helmet());
@@ -90,13 +95,11 @@ app.use((req, res) => {
 
 const errorHandler = require('./middleware/errorHandler');
 
-// ...
-
 // Centralized error handler
 app.use(errorHandler);
 
 if (require.main === module) {
-    app.listen(port, () => {
+    server.listen(port, () => {
         console.log(`API listening at http://localhost:${port}`);
     });
 }
