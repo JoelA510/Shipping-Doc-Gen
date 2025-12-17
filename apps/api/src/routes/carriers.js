@@ -3,7 +3,7 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { getCarrierGateway } = require('../services/carriers/carrierGateway');
-const CarrierFactory = require('../services/carriers/carrierFactory');
+const CarrierFactory = require('../gateways/carriers/CarrierFactory');
 const { generateDocument } = require('../services/documents/generator');
 
 /**

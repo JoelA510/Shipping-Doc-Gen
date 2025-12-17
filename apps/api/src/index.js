@@ -80,12 +80,12 @@ app.use('/notifications', requireAuth, notificationsRouter);
 app.use('/carriers', requireAuth, carriersRouter);
 app.use('/forwarders', requireAuth, forwardersRouter);
 app.use('/erp', requireAuth, erpRouter);
-app.use('/compliance', requireAuth, complianceRouter);
+app.use('/compliance', requireAuth, require('./domains/compliance/routes/complianceRoutes'));
 app.use('/reports', requireAuth, require('./routes/reports')); // New Reports Router
 app.use('/parties', requireAuth, partiesRouter);
 app.use('/items', requireAuth, require('./routes/items'));
 app.use('/shipment-templates', requireAuth, require('./routes/shipmentTemplates'));
-app.use('/shipments', requireAuth, shipmentsRouter);
+app.use('/shipments', requireAuth, require('./domains/shipping/routes/shipmentRoutes'));
 app.use('/import', requireAuth, importRouter);
 app.use('/fleet', requireAuth, require('./routes/fleet'));
 app.use('/', requireAuth, statusRouter);
