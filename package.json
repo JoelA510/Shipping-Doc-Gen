@@ -1,6 +1,10 @@
 {
-    "name": "shipping-doc-gen-monorepo",
+    "name": "formwaypoint-monorepo",
     "private": true,
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/JoelA510/FormWaypoint.git"
+    },
     "workspaces": [
         "apps/*",
         "packages/*"

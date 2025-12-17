@@ -91,7 +91,7 @@ describe('App Integration', () => {
     const login = async () => {
         const loginButton = screen.getByText(/Mock Login/i);
         fireEvent.click(loginButton);
-        await waitFor(() => expect(screen.getByText(/Shipping Doc Gen/i)).toBeInTheDocument(), { timeout: 15000 });
+        await waitFor(() => expect(screen.getByText(/FormWaypoint/i)).toBeInTheDocument(), { timeout: 15000 });
     };
 
     test('renders login and allows access', async () => {
@@ -99,7 +99,7 @@ describe('App Integration', () => {
         const loginButton = screen.getByText(/Mock Login/i);
         fireEvent.click(loginButton);
         await waitFor(() => {
-            const headerElement = screen.getByText(/Shipping Doc Gen/i);
+            const headerElement = screen.getByText(/FormWaypoint/i);
             expect(headerElement).toBeInTheDocument();
         }, { timeout: 15000 });
     });

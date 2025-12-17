@@ -44,7 +44,7 @@ const Layout = ({ user, onLogout, children }) => {
                             <div className="bg-primary-600 p-2 rounded-lg">
                                 <Ship className="w-6 h-6 text-white" />
                             </div>
-                            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Shipping Doc Gen</h1>
+                            <h1 className="text-xl font-bold text-slate-900 tracking-tight">FormWaypoint</h1>
                         </Link>
 
                         <nav className="hidden md:flex items-center space-x-4">
@@ -289,7 +289,9 @@ function AppContent() {
                 } />
                 <Route path="/settings" element={
                     <ProtectedRoute user={user} loading={loading}>
-                        <SettingsPage />
+                        <Layout user={user} onLogout={handleLogout}>
+                            <SettingsPage />
+                        </Layout>
                     </ProtectedRoute>
                 } />
                 <Route path="/erp" element={
