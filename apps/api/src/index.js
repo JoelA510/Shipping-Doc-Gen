@@ -68,6 +68,7 @@ app.use('/auth', authRouter);
 app.use('/config', configRouter);
 app.use('/metrics', metricsRouter);
 app.use('/webhooks', require('./routes/webhooks'));
+app.use('/cx', require('./routes/cx'));
 
 // Protected routes
 app.use('/files', requireAuth, filesRouter);
