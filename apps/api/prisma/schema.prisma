@@ -31,7 +31,9 @@ model User {
   carrierAccounts CarrierAccount[]
   forwarderProfiles ForwarderProfile[]
   erpExportConfigs ErpExportConfig[]
+
   documents     Document[]
+  savedViews    SavedView[]
 }
 
 model Document {
@@ -46,6 +48,12 @@ model Document {
   error      String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
+  
+  // Relations
+  linkedFrom        DocumentLink[] @relation("TargetDoc")
+  linkedTo          DocumentLink[] @relation("SourceDoc")
+  
   userId     String?
   user       User?    @relation(fields: [userId], references: [id])
   
@@ -643,4 +651,75 @@ model MaintenanceEvent {
   odometer    Int?
   notes       String?
   date        DateTime @default(now())
+}
+
+model DocumentLink {
+  id            String   @id @default(uuid())
+  sourceId      String
+  targetId      String
+  type          String   // "IS_INVOICE_FOR", "IS_PACKING_LIST_FOR"
+  confidence    Float    @default(1.0) // For auto-linked
+  createdAt     DateTime @default(now())
+  
+  source        Document @relation("SourceDoc", fields: [sourceId], references: [id], onDelete: Cascade)
+  target        Document @relation("TargetDoc", fields: [targetId], references: [id], onDelete: Cascade)
+  
+  @@index([sourceId])
+  @@index([targetId])
+}
+
+model SavedView {
+  id            String   @id @default(uuid())
+  userId        String
+  name          String
+  query         String   // JSON string or URL query param string
+  isPublic      Boolean  @default(false)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  user          User     @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+}
+
+// Immutable Ledger
+model AuditLedger {
+  id            String   @id @default(uuid())
+  entityType    String   // Shipment, Document
+  entityId      String
+  action        String   // VIEW, DOWNLOAD, EDIT, STATUS_CHANGE
+  diff          String?  // JSON diff
+  ipAddress     String?
+  userAgent     String?
+  userId        String?
+  timestamp     DateTime @default(now())
+  
+  @@index([entityId])
+  @@index([timestamp])
+}
+
+model SanctionCheck {
+  id            String   @id @default(uuid())
+  entityName    String
+  matchScore    Float
+  sourceList    String   // OFAC, BIS
+  status        String   // CLEARED, BLOCKED, REVIEW_REQUIRED
+  
+  checkedAt     DateTime @default(now())
+  reviewedBy    String?
+  reviewedAt    DateTime?
+}
+
+model EmissionLog {
+  id            String   @id @default(uuid())
+  shipmentId    String
+  distanceKm    Float
+  weightKg      Float
+  mode          String
+  co2eKg        Float
+  
+  calculatedAt  DateTime @default(now())
+  
+  @@index([shipmentId])
 }

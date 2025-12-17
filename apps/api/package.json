@@ -7,7 +7,9 @@
         "dev": "nodemon src/index.js",
         "test": "jest",
         "lint": "echo \"No linting configured for api\"",
-        "typecheck": "echo \"No typecheck configured for api\""
+        "typecheck": "echo \"No typecheck configured for api\"",
+        "generate:sdk:node": "openapi-generator-cli generate -i ./swagger.json -g typescript-axios -o ./sdks/node",
+        "generate:sdk:python": "openapi-generator-cli generate -i ./swagger.json -g python -o ./sdks/python"
     },
     "dependencies": {
         "@aws-sdk/client-s3": "^3.940.0",
@@ -45,6 +47,7 @@
         "seed": "node prisma/seed.js"
     },
     "devDependencies": {
+        "@openapitools/openapi-generator-cli": "^2.25.2",
         "jest": "^29.7.0",
         "nodemon": "^3.0.1",
         "supertest": "^6.3.3"

@@ -3,23 +3,34 @@ const { v4: uuidv4 } = require('uuid');
 
 class MockAggregator extends BaseCarrierGateway {
     constructor(account) {
-        // Resolve circular dependency by not extending if imported, but BaseCarrierGateway is in same file usually 
-        // or just plain class if we handle imports carefully. 
-        // Here we assume BaseCarrierGateway is passed or available.
-        // Actually, let's just implement the methods directly to avoid complexity in this file structure for now 
-        // or ensure correct require order.
         super(account);
+        // Default simulation settings
+        this.latencyMs = 500;
+        this.errorRate = 0; // 0.0 to 1.0
+    }
+
+    /**
+     * Configure simulation parameters via header-based context or special credentials
+     */
+    configureSimulation(options) {
+        if (options.latency) this.latencyMs = options.latency;
+        if (options.errorRate) this.errorRate = options.errorRate;
     }
 
     /**
      * Generates dummy rates based on weight and destination.
      */
     async getRates(shipment, lineItems) {
+        // Latency Simalation
+        await new Promise(resolve => setTimeout(resolve, this.latencyMs));
+
+        // Error Simulation (trigger via special address line 1 "ERROR_500" or similar)
+        if (shipment.toAddress && shipment.toAddress.addressLine1 === 'ERROR_RATE') {
+            throw new Error('Carrier API unavailable (Simulated)');
+        }
+
         const weight = shipment.totalWeightKg || 1;
         const isIntl = shipment.destinationCountry !== shipment.originCountry;
-
-        // Simulate API latency
-        await new Promise(resolve => setTimeout(resolve, 500));
 
         const rates = [
             {
@@ -47,29 +58,27 @@ class MockAggregator extends BaseCarrierGateway {
      * "Books" the shipment by returning a tracking number and a fake label PDF.
      */
     async bookShipment(bookingRequest) {
-        const { serviceCode, rateId } = bookingRequest;
-
-        // Simulate API latency
-        await new Promise(resolve => setTimeout(resolve, 800));
+        // Latency simulation
+        await new Promise(resolve => setTimeout(resolve, this.latencyMs));
 
         const trackingNumber = `1Z${uuidv4().replace(/-/g, '').substring(0, 16).toUpperCase()}`;
 
-        // Return Mock Label Data (we would generate a real PDF or return base64 in a real app)
-        // For the pilot, we will rely on the calling service to generate a "Label Document" 
-        // from this response or we return a buffer here.
-        // Let's return a simple structure.
-
         return {
             trackingNumber,
-            labelData: null, // "Real" gateway would return PDF buffer. We might generate a generic label in the doc service.
+            labelData: null,
             carrierTransactionId: uuidv4(),
-            status: 'success'
+            status: 'success',
+            publicUrl: `https://mock.formwaypoint.com/tracking/${trackingNumber}`
         };
     }
 
     async trackShipment(trackingNumber) {
+        // Random Status Simulation
+        const statuses = ['Label Created', 'In Transit', 'Out for Delivery', 'Delivered', 'Exception'];
+        const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+
         return {
-            status: 'In Transit',
+            status: randomStatus,
             location: 'Mock Sort Facility, KS',
             timestamp: new Date().toISOString()
         };
