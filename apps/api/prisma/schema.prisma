@@ -470,10 +470,16 @@ model Item {
   defaultDgUnNumber       String?
   defaultDgHazardClass    String?
   defaultDgPackingGroup   String?
+  
+  // Phase 5: inventory
+  quantityOnHand          Int      @default(0)
+  binLocation             String?  // e.g. "A-12-3"
 
   createdByUserId String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  
+  maintenanceEvents MaintenanceEvent[]
 
   @@index([createdByUserId])
 }
@@ -538,10 +544,13 @@ model Vehicle {
   
   status          String   @default("active")
   
-  drivers         Driver[]
+
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  
+  drivers         Driver[]
+  maintenanceEvents MaintenanceEvent[]
 }
 
 model ServiceZone {
@@ -610,4 +619,28 @@ model Manifest {
   carrierAccount    CarrierAccount @relation(fields: [carrierAccountId], references: [id])
   
   @@index([carrierAccountId])
+}
+
+model ExchangeRate {
+  id           String   @id @default(uuid())
+  currencyFrom String   // USD
+  currencyTo   String   // EUR
+  rate         Float
+  date         DateTime @default(now()) // Fetch date
+  
+  @@unique([currencyFrom, currencyTo, date])
+}
+
+model MaintenanceEvent {
+  id          String   @id @default(uuid())
+  vehicleId   String?
+  vehicle     Vehicle? @relation(fields: [vehicleId], references: [id])
+  itemId      String? // Maintenance on equipment/inventory?
+  item        Item? @relation(fields: [itemId], references: [id])
+  
+  type        String // oil_change, inspection
+  cost        Float
+  odometer    Int?
+  notes       String?
+  date        DateTime @default(now())
 }
