@@ -478,6 +478,9 @@ model Item {
   defaultDgUnNumber       String?
   defaultDgHazardClass    String?
   defaultDgPackingGroup   String?
+
+  parentBoms      BillOfMaterials[] @relation("BomParent")
+  childBoms       BillOfMaterials[] @relation("BomChild")
   
   // Phase 5: inventory
   quantityOnHand          Int      @default(0)
@@ -721,5 +724,32 @@ model EmissionLog {
   
   calculatedAt  DateTime @default(now())
   
+
   @@index([shipmentId])
+}
+
+model BillOfMaterials {
+  id            String   @id @default(uuid())
+  parentItemId  String
+  childItemId   String
+  quantity      Int      // Quantity of child needed for 1 parent
+  
+  parentItem    Item     @relation("BomParent", fields: [parentItemId], references: [id])
+  childItem     Item     @relation("BomChild", fields: [childItemId], references: [id])
+  
+  @@unique([parentItemId, childItemId])
+}
+
+model YardEntry {
+  id            String   @id @default(uuid())
+  trailerNumber String
+  carrier       String?
+  status        String   // CHECKED_IN, AT_DOCK, CHECKED_OUT
+  dockLocation  String?
+  
+  checkInTime   DateTime @default(now())
+  checkOutTime  DateTime?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
