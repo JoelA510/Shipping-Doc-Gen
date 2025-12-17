@@ -17,6 +17,14 @@ class BaseCarrierGateway {
     async trackShipment(trackingNumber) {
         throw new Error('Method "trackShipment" not implemented');
     }
+
+    async voidShipment(shipmentId) {
+        throw new Error('Method "voidShipment" not implemented');
+    }
+
+    async validateAddress(address) {
+        throw new Error('Method "validateAddress" not implemented');
+    }
 }
 
 module.exports = BaseCarrierGateway;

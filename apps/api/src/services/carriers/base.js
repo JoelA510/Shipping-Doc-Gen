@@ -26,6 +26,13 @@ class CarrierAdapter {
     }
 
     /**
+     * Alias for createShipment to match common terminology
+     */
+    async createLabel(shipment) {
+        return this.createShipment(shipment);
+    }
+
+    /**
      * Schedule a pickup
      * @param {object} pickupRequest - Pickup details
      * @returns {Promise<object>} Confirmation details
@@ -50,6 +57,29 @@ class CarrierAdapter {
      */
     async cancelShipment(trackingNumber) {
         throw new Error('cancelShipment not implemented');
+    }
+
+    /**
+     * Alias for cancelShipment
+     */
+    async voidShipment(trackingNumber) {
+        return this.cancelShipment(trackingNumber);
+    }
+
+    /**
+     * Track a shipment
+     * @param {string} trackingNumber 
+     */
+    async trackShipment(trackingNumber) {
+        throw new Error('trackShipment not implemented');
+    }
+
+    /**
+     * Validate an address
+     * @param {object} address 
+     */
+    async validateAddress(address) {
+        throw new Error('validateAddress not implemented');
     }
 }
 

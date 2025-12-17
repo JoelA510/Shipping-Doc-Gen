@@ -62,6 +62,7 @@ app.get('/health', (req, res) => {
 app.use('/auth', authRouter);
 app.use('/config', configRouter);
 app.use('/metrics', metricsRouter);
+app.use('/webhooks', require('./routes/webhooks'));
 
 // Protected routes
 app.use('/files', requireAuth, filesRouter);

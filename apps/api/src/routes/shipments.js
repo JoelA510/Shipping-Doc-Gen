@@ -388,4 +388,67 @@ router.post('/import', async (req, res) => {
     }
 });
 
+// ... Import Export ...
+
+const rateShoppingService = require('../services/rating/rateShoppingService');
+const queue = require('../queue');
+
+// POST /shipments/:id/rates
+router.post('/:id/rates', async (req, res) => {
+    try {
+        const shipment = await prisma.shipment.findUnique({
+            where: { id: req.params.id },
+            include: {
+                shipper: true,
+                consignee: true,
+                lineItems: true
+            }
+        });
+
+        if (!shipment) return res.status(404).json({ error: 'Shipment not found' });
+
+        const rates = await rateShoppingService.getRates(shipment);
+
+        // Update meta with rate quote for history
+        // Note: avoiding full update if just shopping, but useful to cache last quote
+        await prisma.shipmentCarrierMeta.upsert({
+            where: { shipmentId: shipment.id },
+            create: {
+                shipmentId: shipment.id,
+                rateQuoteJson: JSON.stringify(rates)
+            },
+            update: {
+                rateQuoteJson: JSON.stringify(rates)
+            }
+        });
+
+        res.json(rates);
+    } catch (error) {
+        console.error('Rate shopping error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// POST /shipments/:id/book
+router.post('/:id/book', async (req, res) => {
+    try {
+        const { carrierAccountId, serviceCode } = req.body;
+        if (!carrierAccountId || !serviceCode) {
+            return res.status(400).json({ error: 'carrierAccountId and serviceCode are required' });
+        }
+
+        const job = await queue.addJob('GENERATE_LABEL', {
+            shipmentId: req.params.id,
+            carrierAccountId,
+            serviceCode
+        });
+
+        res.json({ success: true, jobId: job.id, status: 'queued' });
+
+    } catch (error) {
+        console.error('Booking error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;

@@ -130,6 +130,7 @@ model CarrierAccount {
   id            String   @id @default(uuid())
   userId        String
   provider      String   // "mock", "fedex", "ups"
+  description   String?  // e.g. "Main Warehouse FedEx"
   accountNumber String   // Encrypted
   credentials   String   // JSON (Encrypted API Keys/Secrets)
   isActive      Boolean  @default(true)
@@ -137,6 +138,7 @@ model CarrierAccount {
   updatedAt     DateTime @updatedAt
   
   user User @relation(fields: [userId], references: [id])
+  shipments Shipment[]
 
   @@index([userId])
 }
@@ -280,6 +282,10 @@ model Shipment {
   carrierCode       String?
   serviceLevelCode  String?
   trackingNumber    String?
+  
+  // Specific Carrier Account Usage
+  carrierAccountId  String?
+  carrierAccount    CarrierAccount? @relation(fields: [carrierAccountId], references: [id])
 
   // Compliance (Epic 17)
   aesRequired      Boolean   @default(false)
@@ -324,6 +330,7 @@ model Shipment {
   @@index([status])
   @@index([shipperId])
   @@index([consigneeId])
+  @@index([carrierAccountId])
 }
 
 model ShipmentLineItem {
