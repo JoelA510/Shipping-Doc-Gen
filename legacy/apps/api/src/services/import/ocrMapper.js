@@ -28,8 +28,14 @@ function mapOcrToShipment(ocrResult) {
     const shipmentId = crypto.randomUUID();
 
     // Map Lines
-    const originCountry = header.originCountry || header.shipperCountry || DEFAULT_ORIGIN_COUNTRY;
-    const destinationCountry = header.destinationCountry || header.consigneeCountry || DEFAULT_DEST_COUNTRY;
+    const originCountry = header.originCountry
+        || header.shipperCountry
+        || DEFAULT_ORIGIN_COUNTRY
+        || 'US';
+    const destinationCountry = header.destinationCountry
+        || header.consigneeCountry
+        || DEFAULT_DEST_COUNTRY
+        || 'US';
 
     const shipmentLines = lines.map(line => ({
         id: crypto.randomUUID(),
