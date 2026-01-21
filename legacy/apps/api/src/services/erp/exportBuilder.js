@@ -29,6 +29,9 @@ class ExportBuilder {
                 serviceLevelCode: true,
                 trackingNumber: true,
                 destinationCountry: true,
+                orderNumber: true,
+                referenceNumber: true,
+                shipDate: true,
                 createdAt: true,
                 updatedAt: true,
                 status: true
