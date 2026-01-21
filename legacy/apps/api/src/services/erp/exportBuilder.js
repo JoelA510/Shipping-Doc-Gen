@@ -23,6 +23,9 @@ class ExportBuilder {
             },
             select: {
                 id: true,
+                orderNumber: true,
+                referenceNumber: true,
+                shipDate: true,
                 carrierCode: true,
                 serviceLevelCode: true,
                 trackingNumber: true,

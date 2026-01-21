@@ -26,7 +26,7 @@ async function generatePDF(data, templateName = 'sli') {
         });
 
         validateHandlebarsTemplate(templateHtml);
-        const template = handlebars.compile(templateHtml, { strict: true });
+        const template = handlebars.compile(templateHtml, { strict: Boolean(data?.header) });
 
         // Add current date if not present
         const context = {
